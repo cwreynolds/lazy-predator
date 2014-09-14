@@ -21,16 +21,18 @@
 (defn build-gp-tree
   "make a random expression with given function names and terminal/leaf values"
   [functions terminals min-size max-size]
-  (cond (< max-size 1) (rand-nth terminals) ;; nil
-        (< max-size min-size) (rand-nth terminals) ;; nil
+  (cond (< max-size 1) nil
+        (< max-size min-size) nil
         (= max-size 1) (rand-nth terminals)
         :else (let [size0 (int (/ max-size 2))
                     tree0 (build-gp-tree functions terminals min-size size0)
                     size1 (- (dec max-size) (count-atoms tree0))
                     tree1 (build-gp-tree functions terminals min-size size1)]
-                (list (rand-nth functions)
-                      tree0
-                      tree1))))
+                (cond (= nil tree0) tree1
+                      (= nil tree1) tree0
+                      :else (list (rand-nth functions)
+                                  tree0
+                                  tree1)))))
 
 (defn make-individual [functions terminals min-size max-size]
   )
