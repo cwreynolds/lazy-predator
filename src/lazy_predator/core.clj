@@ -36,8 +36,21 @@
    'cos '(true)})
 
 ;; for testing: make GP programs with these terminals
+;; (def example-terminal-set
+;;   '(0 1 2 3 4 5 6 7 8 9 x y))
+
+;; testing ephemeral random constants
 (def example-terminal-set
-  '(0 1 2 3 4 5 6 7 8 9 x y))
+  '(x y :float01 :float-plus-minus-1 :float-plus-minus-10))
+
+(defn choose-terminal
+  "choose a random terminal from set, instantiate ephemeral constants"
+  [terminals]
+  (let [selected (rand-nth terminals)]
+    (cond (= selected :float01) (rand)
+          (= selected :float-plus-minus-1) (dec (* 2 (rand)))
+          (= selected :float-plus-minus-10) (- (* 20 (rand)) 10)
+          :else selected)))
 
 (defn gp-tree-size
   "measure the size of a GP tree, counts functions and terminals"
@@ -108,7 +121,8 @@
   "make a random expression with given function names, terminals and size"
   [functions terminals size]
   (cond (< size 1) nil
-        (= size 1) (rand-nth terminals)
+        ;; (= size 1) (rand-nth terminals)
+        (= size 1) (choose-terminal terminals)
         :else (let [;; select random function from map
                     function (rand-nth (keys functions))
                     ;; index function map by selected function name
