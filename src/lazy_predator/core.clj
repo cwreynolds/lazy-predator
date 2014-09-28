@@ -4,8 +4,8 @@
 ;; 2014-09-13 cwr: obviously very rough intial prototypes...
 
 ;;for testing: make GP programs from these functions
-(def example-function-set
-  '(+ - * /))
+;; (def example-function-set
+;;   '(+ - * /))
 
 ;; OK, but how do we declare the number of args for each function?
 ;; Later on, how to we associate types with each?
@@ -89,6 +89,7 @@
 ;;         randomized-fraction-of-size (* size randomized-fraction)]
 ;;     (int (+ randomized-fraction-of-size 0.5))))
 
+(declare build-gp-tree)
 
 (defn build-gp-tree-arglist
   "helper function for build-gp-tree"
@@ -123,7 +124,7 @@
   (cond (< size 1) nil
         ;; (= size 1) (rand-nth terminals)
         (= size 1) (choose-terminal terminals)
-        :else (let [;; select random function from map
+        :else (let [ ;; select random function from map
                     function (rand-nth (keys functions))
                     ;; index function map by selected function name
                     arglist (function functions)
@@ -131,15 +132,27 @@
                     arg-count (count arglist)
                     ;; list of subtrees for each arg
                     args (build-gp-tree-arglist arglist
-                                             functions
-                                             terminals
-                                             (dec size))]
+                                                functions
+                                                terminals
+                                                (dec size))]
                 ;; if any of those are nil...
                 (if (some #(= % nil) args)
                   ;; return a non-nil one [XXX hope there is one!!!]
                   (first (remove #(= % nil) args))
                   ;; otherwise the fn consed onto arg expressions
                   (cons function args)))))
+
+
+
+
+
+
+
+
+
+
+
+
 
 (defn print-gp-tree
   "for testing during development"
@@ -156,6 +169,124 @@
 
 (defn make-population [demes]
   )
+
+
+;; (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))
+
+
+
+;; playing with crossover
+
+;; (defn find-all-subtrees (tree)
+;;   (let [subtrees []
+;;         r (fn r [x]
+;;                   (if (seq? x) 
+;;                     (conj (r (first x))
+;;                           (r (rest x)))
+;;                     x))]
+;;     ((r tree))))
+
+;; (defn find-all-subtrees [tree]
+;;   (if (seq? tree) 
+;;     (conj (find-all-subtrees (first tree))
+;;           (find-all-subtrees (rest tree)))
+;;     [tree]))
+
+;; (defn find-all-subtrees [tree]
+;;   (if (coll? tree)
+;;     (if (empty? tree)
+;;       []
+;;       (conj (find-all-subtrees (first tree))
+;;             (find-all-subtrees (rest tree))))
+;;     [tree]))
+
+;; ;; try going back to this, currently broken
+;; (defn find-all-subtrees [tree]
+;;   (let [subtrees []
+;;         r (fn r [x]
+;;             (if (coll? x)
+;;               (when (not (empty? x))
+;;                 (conj subtrees (first x))
+;;                 (find-all-subtrees (first x))
+;;                 (find-all-subtrees (rest x))) 
+;;               (conj subtrees x)))]
+;;     (r tree)
+;;     subtrees))
+
+;; ;; try going back to this, currently broken
+;; (defn find-all-subtrees [tree]
+;;   (let [ ;;subtrees []
+;;         r (fn r [tree subtrees]
+;;             (if (coll? tree)
+;;               (when (not (empty? tree))
+                
+;;                 ;; (conj subtrees (first tree))
+;;                 ;; (r (first tree))
+;;                 ;; (r (rest tree))
+
+                
+;;                 ;; (r (rest tree)
+;;                 ;;    (conj subtrees (first tree)))
+
+;;                 (vec (concat subtrees
+;;                              (r (first tree) [])
+;;                              (r (rest tree) [])))
+
+;;                 ;; (vec (concat (conj subtrees (first tree))
+;;                 ;;              (r (first tree) [])
+;;                 ;;              (r (rest tree) [])))
+
+                
+
+;;                 ) 
+;;               (conj subtrees tree)))]
+;;     (r tree [])))
+
+
+;; ;; try going back to this, currently broken
+;; (defn find-all-subtrees [tree]
+;;   (let [r (fn r [tree subtrees]
+;;             (if (coll? tree)
+;;               (when (not (empty? tree))
+;;                 (vec (concat (conj subtrees tree)
+;;                              (r (first tree) [])
+;;                              (r (rest tree) []))))))]
+;;     (r tree [])))
+
+
+;; try going back to this, currently broken
+(defn find-all-subtrees [tree]
+  (let [r (fn r [tree subtrees]
+            (when (and (coll? tree)
+                       (not (empty? tree)))
+              (vec (concat (conj subtrees tree)
+                             (r (first tree) [])
+                             (r (rest tree) [])))))]
+    (r tree [])))
+
+
+(def sample-tree
+  '(+ a
+      (* (- b c)
+         (/ d
+            (! e)))))
+
+;;; (doseq [x (find-all-subtrees sample-tree)] (clojure.pprint/pprint x))
+
+
+;; (+ a (* (- b c) (/ d (! e))))
+;; a
+;; (* (- b c) (/ d (! e)))
+;; (- b c)
+;; b
+;; c
+;; (/ d (! e))
+;; d
+;; (! e)
+;; e
+
+
+
 
 (defn -main
   "I don't do a whole lot ... yet."
