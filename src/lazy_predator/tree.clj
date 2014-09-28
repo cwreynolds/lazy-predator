@@ -1,5 +1,9 @@
 (ns lazy-predator.tree
-  (:gen-class))
+  (:gen-class)
+  (:require [clojure.data.generators :as generators]))
+
+
+
 
 
 ;; 2014-09-13 cwr: obviously very rough intial prototypes...
@@ -45,13 +49,22 @@
 (def example-terminal-set
   '(x y :float01 :float-plus-minus-1 :float-plus-minus-10))
 
+
+;; (defn choose-terminal
+;;   "choose a random terminal from set, instantiate ephemeral constants"
+;;   [terminals]
+;;   (let [selected (rand-nth terminals)]
+;;     (cond (= selected :float01) (rand)
+;;           (= selected :float-plus-minus-1) (dec (* 2 (rand)))
+;;           (= selected :float-plus-minus-10) (- (* 20 (rand)) 10)
+;;           :else selected)))
 (defn choose-terminal
   "choose a random terminal from set, instantiate ephemeral constants"
   [terminals]
-  (let [selected (rand-nth terminals)]
-    (cond (= selected :float01) (rand)
-          (= selected :float-plus-minus-1) (dec (* 2 (rand)))
-          (= selected :float-plus-minus-10) (- (* 20 (rand)) 10)
+  (let [selected (generators/rand-nth terminals)]
+    (cond (= selected :float01) (generators/float)
+          (= selected :float-plus-minus-1) (dec (* 2 (generators/float)))
+          (= selected :float-plus-minus-10) (- (* 20 (generators/float)) 10)
           :else selected)))
 
 (defn gp-tree-size
@@ -89,14 +102,38 @@
 ;;   that can be handled outside this function
 ;; changing args to [functions terminals size]
 ;;
+
+;; (defn build-gp-tree
+;;   "make a random expression with given function names, terminals and size"
+;;   [functions terminals size]
+;;   (cond (< size 1) nil
+;;         ;; (= size 1) (rand-nth terminals)
+;;         (= size 1) (choose-terminal terminals)
+;;         :else (let [ ;; select random function from map
+;;                     function (rand-nth (keys functions))
+;;                     ;; index function map by selected function name
+;;                     arglist (function functions)
+;;                     ;; number of args for this function
+;;                     arg-count (count arglist)
+;;                     ;; list of subtrees for each arg
+;;                     args (build-gp-tree-arglist arglist
+;;                                                 functions
+;;                                                 terminals
+;;                                                 (dec size))]
+;;                 ;; if any of those are nil...
+;;                 (if (some #(= % nil) args)
+;;                   ;; return a non-nil one [XXX hope there is one!!!]
+;;                   (first (remove #(= % nil) args))
+;;                   ;; otherwise the fn consed onto arg expressions
+;;                   (cons function args)))))
 (defn build-gp-tree
   "make a random expression with given function names, terminals and size"
   [functions terminals size]
   (cond (< size 1) nil
-        ;; (= size 1) (rand-nth terminals)
+        ;; (= size 1) (generators/rand-nth terminals)
         (= size 1) (choose-terminal terminals)
         :else (let [ ;; select random function from map
-                    function (rand-nth (keys functions))
+                    function (generators/rand-nth (keys functions))
                     ;; index function map by selected function name
                     arglist (function functions)
                     ;; number of args for this function
@@ -122,7 +159,6 @@
   (print (gp-tree-size tree)))
 
 
-;; (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))
 
 
 
@@ -235,4 +271,50 @@
 ;; d
 ;; (! e)
 ;; e
+
+
+
+
+;;; XXX TESTING STUFF
+;;; should be in separate test file
+
+
+
+(defn foo []
+  (binding [generators/*rnd* (java.util.Random. 42)]
+    (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
+
+
+
+;;     (sin
+;;      (sin
+;;       (*
+;;        (*
+;;         (/ (cos (- y 0.7829017639160156)) (cos x))
+;;         (- (cos (sin x)) (- y y)))
+;;        (+
+;;         (/ x (+ -0.36693501472473145 y))
+;;         (sin (- (cos -0.038851022720336914) (cos y)))))))
+;;     size 30
+;;     nil
+
+
+;; BTW, I'd like to tweak the pp params to print like this:
+;;
+;;     (sin (sin (* (* (/ (cos (- y 0.7829017639160156))
+;;                        (cos x))
+;;                     (- (cos (sin x))
+;;                        (- y y)))
+;;                  (+ (/ x
+;;                        (+ -0.36693501472473145 y))
+;;                     (sin (- (cos -0.038851022720336914)
+;;                             (cos y)))))))
+
+
+
+
+
+;; (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))
+
+
 
