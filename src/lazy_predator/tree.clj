@@ -272,6 +272,16 @@
 ;; (! e)
 ;; e
 
+;; lazy-predator.tree> (doseq [x (find-all-subtrees '(* (+ 3 y) (! 5)))] (clojure.pprint/pprint x))
+;; (* (+ 3 y) (! 5))
+;; ((+ 3 y) (! 5))
+;; (+ 3 y)
+;; (3 y)
+;; (y)
+;; ((! 5))
+;; (! 5)
+;; (5)
+;; nil
 
 
 
