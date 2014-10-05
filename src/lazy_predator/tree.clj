@@ -289,9 +289,28 @@
 ;;; should be in separate test file
 
 
+;; (defn foo []
+;;   (binding [generators/*rnd* (java.util.Random. 42)]
+;;     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
 
+
+;; (def m19 "Mersenne prime 19: (2^19)-1" 524287)
+;;
+;; (defmacro with-repeatable-random-numbers [& body]
+;;   "blah"
+;;   `(let [generators/*rnd* (java.util.Random. m19)]
+;;      ~@body))
+(defmacro with-repeatable-random-numbers [& body]
+  "blah"
+  ;; 2147483647 is the 8th Mersenne prime, M31: (2^31)-1
+  `(binding [generators/*rnd* (java.util.Random. 2147483647)]
+     ~@body))
+
+;; (defn foo []
+;;   (binding [generators/*rnd* (java.util.Random. m19)]
+;;     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
 (defn foo []
-  (binding [generators/*rnd* (java.util.Random. 42)]
+  (with-repeatable-random-numbers
     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
 
 
