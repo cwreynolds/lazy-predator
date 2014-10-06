@@ -241,7 +241,7 @@
 ;;     (r tree [])))
 
 
-;; try going back to this, currently broken
+;; try going back to this
 (defn find-all-subtrees [tree]
   (let [r (fn r [tree subtrees]
             (when (and (coll? tree)
@@ -283,6 +283,114 @@
 ;; (5)
 ;; nil
 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+;; 2014-10-04
+
+;; maybe two tree-linearizers:
+;;   (1) vector of "receptors": conses whose car is the thing to be replaced
+;;       (must handle "replace entire tree" case, where there is no such cons)  
+;;   (2) vector of "donors": sub-expressions and terminals which could
+;;       be plugged a given receptor
+
+;; given A and B:
+;;   find receptors in A and choose one at random, call it R
+;;   find donors in B and choose one at random, call it D
+;;   copy A, until R is encountered, replace it with D
+
+;; start with copy of find-all-subtrees:
+;;   why did I decide against binding the vector in the non-recursive fn ?
+;;   maybe th elist of receptors should be the subtrees themselves, not the conses
+;;     pointing to them? this allows better handling of replace-entire-tree 
+
+;; (defn find-receptors [tree]
+;;   (let [r (fn r [tree subtrees]
+;;             (when (and (coll? tree)
+;;                        (not (empty? tree)))
+;;               (vec (concat (conj subtrees tree)
+;;                              (r (first tree) [])
+;;                              (r (rest tree) [])))))]
+;;     (r tree [])))
+
+
+;; (def sample-tree
+;;   '(+ a
+;;       (* (- b c)
+;;          (/ d
+;;             (! e)))))
+
+
+
+;; XXX maybe temporary, just use this CL throwback as a utility for now
+(defn maplist
+  ([s] (maplist identity s))
+  ([f s] (when-let [s (seq s)] (lazy-seq (cons (f s) (maplist f (next s)))))))
+
+;; (maplist (fn [x] [(first x) x]) '(a b c d))
+;; => ([a (a b c d)] [b (b c d)] [c (c d)] [d (d)])
+
+
+;;; XXX we may need to pass in the function and terminal sets for these functions
+
+
+(defn linearize-gp-tree-descriptor
+  "packages the description of a gp subexpression into a map"
+  [subexpression parent type]
+  {:subtree subexpression
+   :parent parent
+   :type type})
+
+(defn linearize-gp-tree-2
+  "given a gp tree (and its parent cons, and its STGP type),
+   append a description of each subexpression to the given table (a vector)"
+  [tree parent type table]
+  (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
+    (if-not (list? tree)
+      new-table
+      (do
+        ;; not sure about these error checks...
+        (when (empty? tree)
+          (throw (Exception. "empty tree?")))
+      
+        ;; it would be nice to check here if (first tree) is on the function list
+
+        ;; (concat new-table
+        ;;         (mapcat (fn [subtree]
+        ;;                   ;; parent and type are wrong
+        ;;                   (linearize-gp-tree-2 subtree parent type []))
+        ;;                 (rest tree)))
+
+        (concat new-table
+                (apply concat
+                       (maplist (fn [arglist]
+                                  (linearize-gp-tree-2 (first arglist) arglist type []))
+                                (rest tree))))
+
+        ))))
+
+;; xxx should it be called linearize-gp-tree?
+
+(defn linearize-gp-tree [tree]
+  (vec (linearize-gp-tree-2 tree :root :any [])))
+
+
+;; (do (clojure.pprint/pprint sample-tree) (clojure.pprint/pprint (linearize-gp-tree sample-tree)))
+;; =>
+;; (+ a (* (- b c) (/ d (! e))))
+;; [{:subtree (+ a (* (- b c) (/ d (! e)))), :parent :root, :type :any}
+;;  {:subtree a, :parent (a (* (- b c) (/ d (! e)))), :type :any}
+;;  {:subtree (* (- b c) (/ d (! e))),:parent ((* (- b c) (/ d (! e)))),:type :any}
+;;  {:subtree (- b c), :parent ((- b c) (/ d (! e))), :type :any}
+;;  {:subtree b, :parent (b c), :type :any}
+;;  {:subtree c, :parent (c), :type :any}
+;;  {:subtree (/ d (! e)), :parent ((/ d (! e))), :type :any}
+;;  {:subtree d, :parent (d (! e)), :type :any}
+;;  {:subtree (! e), :parent ((! e)), :type :any}
+;;  {:subtree e, :parent (e), :type :any}]
+;; nil
+
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
 
 ;;; XXX TESTING STUFF
@@ -301,7 +409,7 @@
 ;;   `(let [generators/*rnd* (java.util.Random. m19)]
 ;;      ~@body))
 (defmacro with-repeatable-random-numbers [& body]
-  "blah"
+  "bind the random number generator to a  value"
   ;; 2147483647 is the 8th Mersenne prime, M31: (2^31)-1
   `(binding [generators/*rnd* (java.util.Random. 2147483647)]
      ~@body))
