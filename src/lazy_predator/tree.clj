@@ -242,21 +242,21 @@
 
 
 ;; try going back to this
-(defn find-all-subtrees [tree]
-  (let [r (fn r [tree subtrees]
-            (when (and (coll? tree)
-                       (not (empty? tree)))
-              (vec (concat (conj subtrees tree)
-                             (r (first tree) [])
-                             (r (rest tree) [])))))]
-    (r tree [])))
+;; (defn find-all-subtrees [tree]
+;;   (let [r (fn r [tree subtrees]
+;;             (when (and (coll? tree)
+;;                        (not (empty? tree)))
+;;               (vec (concat (conj subtrees tree)
+;;                              (r (first tree) [])
+;;                              (r (rest tree) [])))))]
+;;     (r tree [])))
 
 
-(def sample-tree
-  '(+ a
-      (* (- b c)
-         (/ d
-            (! e)))))
+;; (def sample-tree
+;;   '(+ a
+;;       (* (- b c)
+;;          (/ d
+;;             (! e)))))
 
 ;;; (doseq [x (find-all-subtrees sample-tree)] (clojure.pprint/pprint x))
 
@@ -298,28 +298,6 @@
 ;;   find donors in B and choose one at random, call it D
 ;;   copy A, until R is encountered, replace it with D
 
-;; start with copy of find-all-subtrees:
-;;   why did I decide against binding the vector in the non-recursive fn ?
-;;   maybe th elist of receptors should be the subtrees themselves, not the conses
-;;     pointing to them? this allows better handling of replace-entire-tree 
-
-;; (defn find-receptors [tree]
-;;   (let [r (fn r [tree subtrees]
-;;             (when (and (coll? tree)
-;;                        (not (empty? tree)))
-;;               (vec (concat (conj subtrees tree)
-;;                              (r (first tree) [])
-;;                              (r (rest tree) [])))))]
-;;     (r tree [])))
-
-
-;; (def sample-tree
-;;   '(+ a
-;;       (* (- b c)
-;;          (/ d
-;;             (! e)))))
-
-
 
 ;; XXX maybe temporary, just use this CL throwback as a utility for now
 (defn maplist
@@ -333,17 +311,50 @@
 ;;; XXX we may need to pass in the function and terminal sets for these functions
 
 
-(defn linearize-gp-tree-descriptor
+;; (defn- linearize-gp-tree-descriptor
+;;   "packages the description of a gp subexpression into a map"
+;;   [subexpression parent type]
+;;   {:subtree subexpression
+;;    :parent parent
+;;    :type type})
+
+;; (defn- linearize-gp-tree-2
+;;   "given a gp tree (and its parent cons, and its STGP type),
+;;    append a description of each subexpression to the given table (a vector)"
+;;   [tree parent type table]
+;;   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
+;;     (if-not (list? tree)
+;;       new-table
+;;       (do
+;;         ;; not sure about these error checks...
+;;         (when (empty? tree)
+;;           (throw (Exception. "empty tree?")))
+      
+;;         ;; it would be nice to check here if (first tree) is on the function list
+
+;;         (apply concat
+;;                new-table
+;;                (maplist (fn [arglist]
+;;                           (linearize-gp-tree-2 (first arglist) arglist type []))
+;;                         (rest tree)))))))
+
+;; (defn linearize-gp-tree
+;;   "convert tree into table of all subexpressions, their parent cones, and STGP types"
+;;   [tree]
+;;   (vec (linearize-gp-tree-2 tree :root :any [])))
+
+
+(defn- linearize-gp-tree-descriptor
   "packages the description of a gp subexpression into a map"
   [subexpression parent type]
   {:subtree subexpression
    :parent parent
    :type type})
 
-(defn linearize-gp-tree-2
+(defn- linearize-gp-tree-2
   "given a gp tree (and its parent cons, and its STGP type),
    append a description of each subexpression to the given table (a vector)"
-  [tree parent type table]
+  [tree functions terminals parent type table]
   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
     (if-not (list? tree)
       new-table
@@ -351,30 +362,38 @@
         ;; not sure about these error checks...
         (when (empty? tree)
           (throw (Exception. "empty tree?")))
-      
-        ;; it would be nice to check here if (first tree) is on the function list
+        (when (not (contains? functions (first tree)))
+          (throw (Exception. "first of expression not in function set?")))
+        (apply concat
+               new-table
+               (maplist (fn [arglist]
+                          (linearize-gp-tree-2 (first arglist) functions terminals arglist type []))
+                        (rest tree)))))))
 
-        ;; (concat new-table
-        ;;         (mapcat (fn [subtree]
-        ;;                   ;; parent and type are wrong
-        ;;                   (linearize-gp-tree-2 subtree parent type []))
-        ;;                 (rest tree)))
-
-        (concat new-table
-                (apply concat
-                       (maplist (fn [arglist]
-                                  (linearize-gp-tree-2 (first arglist) arglist type []))
-                                (rest tree))))
-
-        ))))
-
-;; xxx should it be called linearize-gp-tree?
-
-(defn linearize-gp-tree [tree]
-  (vec (linearize-gp-tree-2 tree :root :any [])))
+(defn linearize-gp-tree
+  "convert tree into table of all subexpressions, their parent cones, and STGP types"
+  [tree functions terminals]
+  (vec (linearize-gp-tree-2 tree functions terminals :root :any [])))
 
 
-;; (do (clojure.pprint/pprint sample-tree) (clojure.pprint/pprint (linearize-gp-tree sample-tree)))
+(defn test-linearize-gp-tree
+  []
+  (let [sample-tree '(+ a
+                        (* (- b c)
+                           (/ d
+                              (! e))))
+        functions {'+ '(true true)
+                   '- '(true true)
+                   '* '(true true)
+                   '/ '(true true)
+                   '! '(true)}
+        terminals '(a b c d e)]
+    (do (clojure.pprint/pprint sample-tree)
+        (clojure.pprint/pprint (linearize-gp-tree sample-tree functions terminals)))))
+
+
+
+;; (test-linearize-gp-tree)
 ;; =>
 ;; (+ a (* (- b c) (/ d (! e))))
 ;; [{:subtree (+ a (* (- b c) (/ d (! e)))), :parent :root, :type :any}
@@ -388,6 +407,16 @@
 ;;  {:subtree (! e), :parent ((! e)), :type :any}
 ;;  {:subtree e, :parent (e), :type :any}]
 ;; nil
+
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+;; 2014-10-05
+
+;; crossover experiment
+
+
+
 
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
