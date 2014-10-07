@@ -411,13 +411,99 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
-;; 2014-10-05
-
+;; 2014-10-06
 ;; crossover experiment
 
+(defn- gp-crossover-splice
+  ""
+  [tree-a parent-a subtree-a subtree-b functions terminals]
+  ;; (prn (list 'tree-a
+  ;;            tree-a
+  ;;            'parent-a
+  ;;            parent-a
+  ;;            (= parent-a
+  ;;               (:parent subtree-a))
+  ;;            '(:subtree subtree-a)
+  ;;            (:subtree subtree-a)
+  ;;            '(:parent subtree-a)
+  ;;            (:parent subtree-a)
+  ;;            ))
+  (if (= parent-a
+         (:parent subtree-a))
+    (:subtree subtree-b)
+    (if (list? tree-a)
+      (cons (first tree-a)
+            (maplist (fn [arglist] (gp-crossover-splice (first arglist) arglist subtree-a subtree-b functions terminals))
+                     (rest tree-a)))
+      tree-a)))
 
 
+(defn gp-crossover
+  "given two GP trees, replace a random subtree of A with a random subtree of B"
+  [tree-a tree-b functions terminals]
+  (let [table-a (linearize-gp-tree tree-a functions terminals)
+        table-b (linearize-gp-tree tree-b functions terminals)
+        subtree-a (generators/rand-nth table-a)
+        subtree-b (generators/rand-nth table-b)]
+    (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals)))
 
+
+(defn test-gp-crossover-splice []
+  (let [tree-a '(a (b 1 1)
+                   (a 0 1))
+        tree-b '(x (y 8 9)
+                   (w 9))
+        subtree-a (linearize-gp-tree-descriptor (second tree-a) (rest tree-a) :foo)
+        subtree-b (linearize-gp-tree-descriptor tree-b :root :foo)
+        ;; subtree-a (linearize-gp-tree-descriptor (nth tree-a 2) (rest (rest tree-a)) :foo)
+        ;; subtree-b (linearize-gp-tree-descriptor (second tree-b) (rest tree-b) :foo)
+        functions {'a '(:foo :foo)
+                   'b '(:foo :foo)
+                   'c '(:foo :foo)
+                   'x '(:foo :foo)
+                   'y '(:foo :foo)
+                   'w '(:foo)}
+        terminals '(0 1 8 9)]
+    
+    ;; (clojure.pprint/pprint
+    ;;  (gp-crossover-splice tree-a subtree-a subtree-b functions terminals))
+
+    ;; (gp-tree-size (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals))
+    ;; nil
+
+    (let [spliced (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals)]
+      (prn (gp-tree-size spliced))
+      spliced
+      )))
+
+;; (test-gp-crossover-splice)  => 
+;; (a (x (y 8 9)
+;;       (w 9))
+;;    (a 0 1))
+
+
+;; (test-gp-crossover-splice)
+;; (tree-a (a (b 1 1) (a 0 1)) parent-a :root false (:subtree subtree-a) (b 1 1) (:parent subtree-a) ((b 1 1) (a 0 1)))
+;; (tree-a (b 1 1) parent-a ((b 1 1) (a 0 1)) true (:subtree subtree-a) (b 1 1) (:parent subtree-a) ((b 1 1) (a 0 1)))
+;; (tree-a (a 0 1) parent-a ((a 0 1)) false (:subtree subtree-a) (b 1 1) (:parent subtree-a) ((b 1 1) (a 0 1)))
+;; (tree-a 0 parent-a (0 1) false (:subtree subtree-a) (b 1 1) (:parent subtree-a) ((b 1 1) (a 0 1)))
+;; (tree-a 1 parent-a (1) false (:subtree subtree-a) (b 1 1) (:parent subtree-a) ((b 1 1) (a 0 1)))
+;; 10
+;; (a (x (y 8 9) (w 9)) (a 0 1))
+
+;; second test:
+
+;; (test-gp-crossover-splice)
+;; (tree-a (a (b 1 1) (a 0 1)) parent-a :root false (:subtree subtree-a) (a 0 1) (:parent subtree-a) ((a 0 1)))
+;; (tree-a (b 1 1) parent-a ((b 1 1) (a 0 1)) false (:subtree subtree-a) (a 0 1) (:parent subtree-a) ((a 0 1)))
+;; (tree-a (a 0 1) parent-a ((a 0 1)) true (:subtree subtree-a) (a 0 1) (:parent subtree-a) ((a 0 1)))
+;; (tree-a 1 parent-a (1 1) false (:subtree subtree-a) (a 0 1) (:parent subtree-a) ((a 0 1)))
+;; (tree-a 1 parent-a (1) false (:subtree subtree-a) (a 0 1) (:parent subtree-a) ((a 0 1)))
+;; 7
+;; (a (b 1 1) (y 8 9))
+
+
+;; random thought: the spec of functions and terminals form a type of grammer
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
