@@ -428,8 +428,10 @@
   ;;            '(:parent subtree-a)
   ;;            (:parent subtree-a)
   ;;            ))
-  (if (= parent-a
-         (:parent subtree-a))
+  (if ;; (= parent-a
+      ;;    (:parent subtree-a))
+      (identical? parent-a
+                  (:parent subtree-a))
     (:subtree subtree-b)
     (if (list? tree-a)
       (cons (first tree-a)
