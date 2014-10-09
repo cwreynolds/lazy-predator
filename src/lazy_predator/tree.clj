@@ -531,6 +531,24 @@
       (prn (gp-crossover tree-a tree-b functions terminals)))))
 
 
+;; what happened here?!
+;; later: oh was using = instead of identical?
+;; because the parent was just: (f)
+;;
+;; (aaa (bbb d
+;;           (aaa d
+;;                e
+;;                (XXX (YYY U V W)
+;;                     (ZZZ (XXX U)
+;;                          (ZZZ V W)))))
+;;      (ccc e)
+;;      (bbb (bbb d e)
+;;           (XXX (YYY U V W)
+;;                (ZZZ (XXX U)
+;;                     (ZZZ V W)))))
+
+
+
 ;; (test-gp-crossover 200)
 ;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
 ;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
@@ -734,18 +752,45 @@
 ;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
 ;; nil
 
-;; what happened here?
-'(aaa (bbb d
-           (aaa d
-                e
-                (XXX (YYY U V W)
-                     (ZZZ (XXX U)
-                          (ZZZ V W)))))
-      (ccc e)
-      (bbb (bbb d e)
-           (XXX (YYY U V W)
-                (ZZZ (XXX U)
-                     (ZZZ V W)))))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+;; 2014-10-08
+;; jiggle mutation experiment
+;; occasionally replace a number with slightly displaced value
+;; this ought to respect STGP types, it is just a simple prototype
+
+(defn maybe? [likelihood]
+  (if (or (> likelihood 1)
+          (< likelihood 0))
+    (throw (Exception. "likelihood must be between 0 and 1"))
+    (> likelihood
+       (generators/float))))
+
+(defn jiggle-number [n]
+  (let [max (* n 1.01)
+        min (* n 0.99)]
+    (+ min
+       (* (- max min)
+          (generators/float)))))
+
+
+(defn jiggle-gp-tree [tree]
+  (if (list? tree)
+    (cons (first tree)
+          (map jiggle-gp-tree
+               (rest tree)))
+    (if (and (number? tree)
+             (maybe? 0.1))
+      (jiggle-number tree)
+      tree)))
+
+(defn test-jiggle-gp-tree [n]
+  (let [tree '(a 1
+                 (b (d 2 3)
+                    (e 4 5)))]
+    (doseq [i (range n)]
+      (prn (jiggle-gp-tree tree)))))
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
@@ -754,26 +799,13 @@
 ;;; should be in separate test file
 
 
-;; (defn foo []
-;;   (binding [generators/*rnd* (java.util.Random. 42)]
-;;     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
-
-
-;; (def m19 "Mersenne prime 19: (2^19)-1" 524287)
-;;
-;; (defmacro with-repeatable-random-numbers [& body]
-;;   "blah"
-;;   `(let [generators/*rnd* (java.util.Random. m19)]
-;;      ~@body))
 (defmacro with-repeatable-random-numbers [& body]
   "bind the random number generator to a  value"
   ;; 2147483647 is the 8th Mersenne prime, M31: (2^31)-1
   `(binding [generators/*rnd* (java.util.Random. 2147483647)]
      ~@body))
 
-;; (defn foo []
-;;   (binding [generators/*rnd* (java.util.Random. m19)]
-;;     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
+;;; XXX better name
 (defn foo []
   (with-repeatable-random-numbers
     (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))))
@@ -804,7 +836,8 @@
 ;;                     (sin (- (cos -0.038851022720336914)
 ;;                             (cos y)))))))
 
-
+;; (looks like there is a good toolkit in clojure.pprint for building custom pretty
+;; printers: http://clojuredocs.org/clojure.pprint )
 
 
 
