@@ -287,12 +287,6 @@
 
 ;; 2014-10-04
 
-;; maybe two tree-linearizers:
-;;   (1) vector of "receptors": conses whose car is the thing to be replaced
-;;       (must handle "replace entire tree" case, where there is no such cons)  
-;;   (2) vector of "donors": sub-expressions and terminals which could
-;;       be plugged a given receptor
-
 ;; given A and B:
 ;;   find receptors in A and choose one at random, call it R
 ;;   find donors in B and choose one at random, call it D
@@ -306,42 +300,6 @@
 
 ;; (maplist (fn [x] [(first x) x]) '(a b c d))
 ;; => ([a (a b c d)] [b (b c d)] [c (c d)] [d (d)])
-
-
-;;; XXX we may need to pass in the function and terminal sets for these functions
-
-
-;; (defn- linearize-gp-tree-descriptor
-;;   "packages the description of a gp subexpression into a map"
-;;   [subexpression parent type]
-;;   {:subtree subexpression
-;;    :parent parent
-;;    :type type})
-
-;; (defn- linearize-gp-tree-2
-;;   "given a gp tree (and its parent cons, and its STGP type),
-;;    append a description of each subexpression to the given table (a vector)"
-;;   [tree parent type table]
-;;   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
-;;     (if-not (list? tree)
-;;       new-table
-;;       (do
-;;         ;; not sure about these error checks...
-;;         (when (empty? tree)
-;;           (throw (Exception. "empty tree?")))
-      
-;;         ;; it would be nice to check here if (first tree) is on the function list
-
-;;         (apply concat
-;;                new-table
-;;                (maplist (fn [arglist]
-;;                           (linearize-gp-tree-2 (first arglist) arglist type []))
-;;                         (rest tree)))))))
-
-;; (defn linearize-gp-tree
-;;   "convert tree into table of all subexpressions, their parent cones, and STGP types"
-;;   [tree]
-;;   (vec (linearize-gp-tree-2 tree :root :any [])))
 
 
 (defn- linearize-gp-tree-descriptor
@@ -359,11 +317,12 @@
     (if-not (list? tree)
       new-table
       (do
-        ;; not sure about these error checks...
-        (when (empty? tree)
-          (throw (Exception. "empty tree?")))
-        (when (not (contains? functions (first tree)))
-          (throw (Exception. "first of expression not in function set?")))
+        ;; not sure about these error checks:
+        ;; just a temporary dev expedient, or leave in long term?
+        (assert (not (empty? tree))
+                "GP tree is unexpectedly empty")
+        (assert (contains? functions (first tree))
+                "first of expression not in function set?")
         (apply concat
                new-table
                (maplist (fn [arglist]
@@ -398,7 +357,7 @@
 ;; (+ a (* (- b c) (/ d (! e))))
 ;; [{:subtree (+ a (* (- b c) (/ d (! e)))), :parent :root, :type :any}
 ;;  {:subtree a, :parent (a (* (- b c) (/ d (! e)))), :type :any}
-;;  {:subtree (* (- b c) (/ d (! e))),:parent ((* (- b c) (/ d (! e)))),:type :any}
+;;  {:subtree (* (- b c) (/ d (! e))), :parent ((* (- b c) (/ d (! e)))),:type :any}
 ;;  {:subtree (- b c), :parent ((- b c) (/ d (! e))), :type :any}
 ;;  {:subtree b, :parent (b c), :type :any}
 ;;  {:subtree c, :parent (c), :type :any}
@@ -466,17 +425,9 @@
                    'y '(:foo :foo)
                    'w '(:foo)}
         terminals '(0 1 8 9)]
-    
-    ;; (clojure.pprint/pprint
-    ;;  (gp-crossover-splice tree-a subtree-a subtree-b functions terminals))
-
-    ;; (gp-tree-size (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals))
-    ;; nil
-
     (let [spliced (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals)]
       (prn (gp-tree-size spliced))
-      spliced
-      )))
+      spliced)))
 
 ;; (test-gp-crossover-splice)  => 
 ;; (a (x (y 8 9)
@@ -530,228 +481,108 @@
       ;;(clojure.pprint/pprint (gp-crossover tree-a tree-b functions terminals))
       (prn (gp-crossover tree-a tree-b functions terminals)))))
 
-
-;; what happened here?!
-;; later: oh was using = instead of identical?
-;; because the parent was just: (f)
-;;
-;; (aaa (bbb d
-;;           (aaa d
-;;                e
-;;                (XXX (YYY U V W)
-;;                     (ZZZ (XXX U)
-;;                          (ZZZ V W)))))
-;;      (ccc e)
-;;      (bbb (bbb d e)
-;;           (XXX (YYY U V W)
-;;                (ZZZ (XXX U)
-;;                     (ZZZ V W)))))
-
-
-
-;; (test-gp-crossover 200)
-;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d e V)) (ccc e) (bbb (bbb d e) V))
-;; (aaa (bbb d (aaa d e f)) (ccc (XXX U)) (bbb (bbb d (XXX U)) f))
-;; (aaa (bbb d V) (ccc e) (bbb (bbb d e) f))
+;; (test-gp-crossover 100)  =>
+;; (aaa (bbb d (aaa d (YYY U V W) f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e (YYY U V W))) (ccc e) (bbb (bbb d e) f))
 ;; (aaa (bbb d (aaa d e f)) (XXX U) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb W e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d U) f))
-;; (aaa U (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (ZZZ (XXX U) (ZZZ V W))) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa (ZZZ V W) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d V f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) U)
-;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
-;; (aaa (ZZZ (XXX U) (ZZZ V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (ZZZ V W))) (ccc e) (bbb (bbb d e) (ZZZ V W)))
-;; (aaa (bbb d (aaa d e (YYY U V W))) (ccc e) (bbb (bbb d e) (YYY U V W)))
-;; (aaa U (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
-;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa W e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa V e f)) (ccc e) (bbb (bbb d e) f))
-;; (ZZZ V W)
-;; (aaa (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa V e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) W)
-;; (aaa (bbb d (aaa d e f)) (YYY U V W) (bbb (bbb d e) f))
-;; (aaa (bbb d U) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d W) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) (ZZZ (XXX U) (ZZZ V W))))
-;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d (YYY U V W) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa (ZZZ (XXX U) (ZZZ V W)) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (ZZZ (XXX U) (ZZZ V W)) e) f))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d e f)) (ccc e) W)
-;; (aaa (bbb d (aaa d e f)) (ccc (ZZZ V W)) (bbb (bbb d (ZZZ V W)) f))
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb d (ZZZ V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb (YYY U V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb U f))
-;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d U) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
-;; (aaa (bbb d (aaa d (YYY U V W) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa (XXX U) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa (XXX U) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) (ZZZ (XXX U) (ZZZ V W))))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d e f)) (ccc (ZZZ V W)) (bbb (bbb d (ZZZ V W)) f))
-;; (aaa (bbb d W) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb U (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (ZZZ (XXX U) (ZZZ V W)) e) f))
-;; (aaa (bbb d (aaa d W f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa U e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (XXX U)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (XXX U) e) f))
-;; (aaa (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (ccc e) (bbb (bbb d e) f))
-;; W
-;; (ZZZ V W)
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (XXX U) e) f))
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (bbb (bbb d e) f))
-;; (aaa (bbb d (XXX U)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (YYY U V W) f))
 ;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb W f))
-;; (aaa (bbb d (aaa d e (XXX U))) (ccc e) (bbb (bbb d e) (XXX U)))
-;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
-;; (YYY U V W)
-;; U
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb (YYY U V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb V e) f))
-;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (YYY U V W) (bbb (bbb d e) f))
+;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
 ;; (aaa (bbb d (aaa (ZZZ (XXX U) (ZZZ V W)) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))))) (ccc e) (bbb (bbb d e) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))))  ;; ???
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (YYY U V W) e) f))
-;; (aaa (bbb d (YYY U V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (ZZZ V W) f))
-;; (aaa (bbb d (aaa d e f)) (XXX U) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb U (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) e) f))
-;; (aaa (bbb d (aaa d (ZZZ (XXX U) (ZZZ V W)) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d e V)) (ccc e) (bbb (bbb d e) V))
-;; (aaa U (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb W e) f))
-;; (aaa (bbb U (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
-;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (YYY U V W) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (ZZZ V W) e) f))
-;; (aaa (bbb d (aaa d e (YYY U V W))) (ccc e) (bbb (bbb d e) (YYY U V W)))
-;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d U) f))
-;; (aaa (bbb U (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
-;; (aaa (bbb d (aaa d e f)) (XXX U) (bbb (bbb d e) f))
-;; (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))
-;; (aaa (bbb d (aaa (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) U)
-;; (aaa (bbb d V) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
-;; (aaa W (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) V)
-;; (aaa (bbb d (aaa d e f)) V (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (XXX U))) (ccc e) (bbb (bbb d e) (XXX U)))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb V e) f))
-;; (ZZZ (XXX U) (ZZZ V W))
-;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d U) f))
 ;; (aaa V (ccc e) (bbb (bbb d e) f))
-;; (ZZZ V W)
-;; (aaa (bbb d (aaa d e f)) V (bbb (bbb d e) f))
-;; W
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb W e) f))
-;; (aaa (bbb d (aaa d (ZZZ (XXX U) (ZZZ V W)) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (YYY U V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
-;; (aaa (bbb d (YYY U V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb (ZZZ V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb (ZZZ V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d V) f))
-;; (aaa (bbb d (aaa U e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa W (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d (ZZZ V W) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d (ZZZ (XXX U) (ZZZ V W)) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d W) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa U e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa V e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ZZZ (XXX U) (ZZZ V W)) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d (YYY U V W) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; W
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb (YYY U V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) V (bbb (bbb d e) f))
-;; (aaa (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) (ZZZ (XXX U) (ZZZ V W))))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb W e) f))
-;; (aaa (bbb d (aaa (ZZZ V W) e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (ZZZ (XXX U) (ZZZ V W)) e) f))
-;; (aaa U (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb W e) f))
-;; (aaa V (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc W) (bbb (bbb d W) f))
-;; (aaa (bbb d (aaa d e f)) (ccc (XXX U)) (bbb (bbb d (XXX U)) f))
-;; (aaa (bbb d (aaa d (ZZZ (XXX U) (ZZZ V W)) f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (ZZZ V W) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (XXX U))
-;; (aaa W (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d W f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d e f)) (ccc (YYY U V W)) (bbb (bbb d (YYY U V W)) f))
-;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) U))
-;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa W (ccc e) (bbb (bbb d e) f))
-;; (XXX U)
-;; (aaa (bbb d (aaa d e f)) (ccc (ZZZ (XXX U) (ZZZ V W))) (bbb (bbb d (ZZZ (XXX U) (ZZZ V W))) f))
 ;; (aaa (bbb d (aaa W e f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (ZZZ (XXX U) (ZZZ V W)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
-;; (aaa (bbb d (aaa d (ZZZ V W) f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))))
+;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e (XXX U))) (ccc e) (bbb (bbb d e) f))
 ;; (aaa (bbb d (aaa d (YYY U V W) f)) (ccc e) (bbb (bbb d e) f))
-;; V
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
-;; V
-;; (aaa (bbb d (aaa d e V)) (ccc e) (bbb (bbb d e) V))
-;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) W))
-;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
-;; U
-;; (aaa V (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
-;; (aaa (bbb d V) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) (ZZZ (XXX U) (ZZZ V W))))
-;; (aaa (bbb d (aaa d W f)) (ccc e) (bbb (bbb d e) f))
-;; (aaa (bbb d (aaa d e f)) (ccc (ZZZ V W)) (bbb (bbb d (ZZZ V W)) f))
-;; (aaa (bbb d (aaa d e f)) (ccc e) U)
 ;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
+;; (aaa (bbb (XXX U) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d (XXX U)) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d U) f))
+;; (aaa (bbb (XXX U) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa (YYY U V W) e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) (XXX U)))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb V f))
+;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) (ZZZ (XXX U) (ZZZ V W))))
+;; (aaa (bbb d (aaa d e V)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc W) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa U e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d V) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d U f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa W (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb U (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))) (ccc e) (bbb (bbb d e) f))
+;; (aaa (YYY U V W) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d e) f))
+;; W
+;; (aaa (bbb d (aaa d e f)) (ccc (YYY U V W)) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) f))
+;; (aaa (bbb d U) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d V) (ccc e) (bbb (bbb d e) f))
+;; (aaa (ZZZ V W) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e W)) (ccc e) (bbb (bbb d e) f))
+;; (ZZZ (XXX U) (ZZZ V W))
+;; (XXX U)
+;; (aaa (bbb d (aaa V e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
+;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))))
+;; (aaa (bbb d U) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa (ZZZ V W) e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e U)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d W) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb V (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa W e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc U) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb V e) f))
+;; (aaa (XXX U) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
+;; (aaa (bbb (XXX U) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb U e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) U)
+;; (aaa (bbb d (aaa d e f)) U (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc V) (bbb (bbb d e) f))
+;; W
+;; (aaa (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) V))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d (YYY U V W)) f))
+;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb (ZZZ V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb (XXX U) e) f))
+;; (aaa (bbb W (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d (ZZZ (XXX U) (ZZZ V W)) f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
+;; (aaa (YYY U V W) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb V e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
+;; (aaa (bbb d (aaa d e f)) (ZZZ V W) (bbb (bbb d e) f))
+;; (XXX U)
+;; (aaa (bbb d (aaa d e f)) W (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
+;; (aaa (bbb d (aaa d e f)) (ccc e) V)
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) (ZZZ V W)))
+;; (aaa V (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d V) f))
+;; (aaa (bbb d (aaa d W f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W))) e f)) (ccc e) (bbb (bbb d e) f))
+;; (XXX (YYY U V W) (ZZZ (XXX U) (ZZZ V W)))
+;; W
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb W f))
+;; (aaa (bbb (ZZZ V W) (aaa d e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa W e f)) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d U) f))
+;; (aaa (bbb d (ZZZ (XXX U) (ZZZ V W))) (ccc e) (bbb (bbb d e) f))
+;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
 ;; nil
-
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
@@ -760,12 +591,13 @@
 ;; occasionally replace a number with slightly displaced value
 ;; this ought to respect STGP types, it is just a simple prototype
 
+
 (defn maybe? [likelihood]
-  (if (or (> likelihood 1)
-          (< likelihood 0))
-    (throw (Exception. "likelihood must be between 0 and 1"))
-    (> likelihood
-       (generators/float))))
+  (assert (<= 0 likelihood 1) "likelihood should be between 0 and 1")
+  (> likelihood
+     (generators/float)))
+
+;; (count (filter #{true} (take 100000 (repeatedly #(maybe? 0.25)))))
 
 (defn jiggle-number [n]
   (let [max (* n 1.01)
