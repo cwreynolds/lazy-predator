@@ -50,14 +50,6 @@
   '(x y :float01 :float-plus-minus-1 :float-plus-minus-10))
 
 
-;; (defn choose-terminal
-;;   "choose a random terminal from set, instantiate ephemeral constants"
-;;   [terminals]
-;;   (let [selected (rand-nth terminals)]
-;;     (cond (= selected :float01) (rand)
-;;           (= selected :float-plus-minus-1) (dec (* 2 (rand)))
-;;           (= selected :float-plus-minus-10) (- (* 20 (rand)) 10)
-;;           :else selected)))
 (defn choose-terminal
   "choose a random terminal from set, instantiate ephemeral constants"
   [terminals]
@@ -586,11 +578,6 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
-;; 2014-10-08
-;; jiggle mutation experiment
-;; occasionally replace a number with slightly displaced value
-;; this ought to respect STGP types, it is just a simple prototype
-
 
 (defn maybe? [likelihood]
   (assert (<= 0 likelihood 1) "likelihood should be between 0 and 1")
@@ -599,12 +586,27 @@
 
 ;; (count (filter #{true} (take 100000 (repeatedly #(maybe? 0.25)))))
 
-(defn jiggle-number [n]
-  (let [max (* n 1.01)
-        min (* n 0.99)]
-    (+ min
-       (* (- max min)
-          (generators/float)))))
+(defn clip-number
+  "given a number force it to be within a given interval, by default the interval [0 1]"
+  ([n] (clip-number n 0 1))
+  ([n min max] (cond (> n max) max
+           (< n min) min
+           :else n)))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+;; 2014-10-08
+;; jiggle mutation experiment
+;; occasionally replace a number with slightly displaced value
+;; this ought to respect STGP types, it is just a simple prototype
+
+
+(defn jiggle-float01 [n]
+  (clip-number (let [max (+ n 0.01)
+                     min (- n 0.01)]
+                 (+ min
+                    (* (- max min)
+                       (generators/float))))))
 
 
 (defn jiggle-gp-tree [tree]
@@ -614,7 +616,7 @@
                (rest tree)))
     (if (and (number? tree)
              (maybe? 0.1))
-      (jiggle-number tree)
+      (jiggle-float01 tree)
       tree)))
 
 (defn test-jiggle-gp-tree [n]
@@ -623,6 +625,16 @@
                     (e 4 5)))]
     (doseq [i (range n)]
       (prn (jiggle-gp-tree tree)))))
+
+(defn test-jiggle-float01
+  []
+  (loop [n 0
+         i 0]
+    (prn n)
+    (when (< i 1000)
+      
+      (recur (jiggle-float01 n)
+             (inc i)))))
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
