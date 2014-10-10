@@ -379,9 +379,7 @@
   ;;            '(:parent subtree-a)
   ;;            (:parent subtree-a)
   ;;            ))
-  (if ;; (= parent-a
-      ;;    (:parent subtree-a))
-      (identical? parent-a
+  (if (identical? parent-a
                   (:parent subtree-a))
     (:subtree subtree-b)
     (if (list? tree-a)
@@ -635,6 +633,32 @@
       
       (recur (jiggle-float01 n)
              (inc i)))))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+;; 2014-10-09
+;; hoist mutation experiment
+;;
+;; occasionally replace a tree with one of its own subtrees
+
+(defn hoist-gp-subtree [tree functions terminals]
+  "given a GP tree, select a random subtree to replace the whole tree"
+  (generators/rand-nth (linearize-gp-tree tree functions terminals)))
+
+
+(defn test-hoist-gp-subtree []
+  (let [tree '(aaa (bbb d
+                        (aaa d e f))
+                   (ccc e)
+                   (bbb (bbb d e)
+                        f))
+        functions {'aaa '(:foo :foo :foo)
+                   'bbb '(:foo :foo)
+                   'ccc '(:foo)}
+        terminals '(d e f)]
+    (:subtree (hoist-gp-subtree tree functions terminals))))
+
+
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
