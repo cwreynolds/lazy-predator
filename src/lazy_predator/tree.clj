@@ -643,10 +643,9 @@
 
 (defn hoist-gp-subtree [tree functions terminals]
   "given a GP tree, select a random subtree to replace the whole tree"
-  (generators/rand-nth (linearize-gp-tree tree functions terminals)))
+    (:subtree (generators/rand-nth (linearize-gp-tree tree functions terminals))))
 
-
-(defn test-hoist-gp-subtree []
+(defn test-hoist-gp-subtree [n]
   (let [tree '(aaa (bbb d
                         (aaa d e f))
                    (ccc e)
@@ -656,9 +655,8 @@
                    'bbb '(:foo :foo)
                    'ccc '(:foo)}
         terminals '(d e f)]
-    (:subtree (hoist-gp-subtree tree functions terminals))))
-
-
+    (doseq [i (range n)]
+      (prn (hoist-gp-subtree tree functions terminals)))))
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
