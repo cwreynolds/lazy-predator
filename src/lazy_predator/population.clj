@@ -16,12 +16,37 @@
 (defn next-serial-number-for-individual []
   (swap! *serial-number* inc))
 
-(defn make-individual [functions terminals size]
-  {:tree (tree/build-gp-tree functions terminals size)
-   :id (next-serial-number-for-individual)})
+(defn make-individual
+  "make a new individual to add to a population, from a tree,
+   or from parameters to create a random tree"
+  ([tree]
+     {:tree tree
+      :id (next-serial-number-for-individual)})
+  ([functions terminals size]
+     (make-individual (tree/build-gp-tree functions terminals size))))
 
-(defn make-deme [individuals]
-  )
+(defn make-deme [n functions terminals size]
+  "create a deme of N random individuals with given parameters"
+  (vec (repeatedly n #(make-individual functions terminals size))))
 
-(defn make-population [demes]
-  )
+(defn make-population [n d functions terminals size]
+  "create a population of N random individuals (with given parameters) in D demes"
+  (vec (repeatedly d #(make-deme (/ n d) functions terminals size))))
+
+(defn test-make-population [n d size]
+  (let [functions {'a '(:foo)
+                   'b '(:foo :foo)
+                   'c '(:foo :foo :foo)}
+        terminals '(x y)]
+    (clojure.pprint/pprint (make-population n d functions terminals size))))
+
+;; (test-make-population 6 2 10)  =>
+;; [[{:tree (a (c (a x) (c x y (a x)) y)), :id 7}
+;;   {:tree (c (c x y x) (b x (a x)) y), :id 8}
+;;   {:tree (b (c x (b y y) y) (b x (a y))), :id 9}]
+;;  [{:tree (a (a (b (c y (a y) y) y))), :id 10}
+;;   {:tree (a (c (c x y (b x y)) x x)), :id 11}
+;;   {:tree (c (b x (a x)) (b x (a x)) y), :id 12}]]
+;; nil
+
+;; need utilities to adjust populations to deal with too many or too few
