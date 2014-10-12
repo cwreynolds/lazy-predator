@@ -2,12 +2,6 @@
   (:gen-class)
   (:require [clojure.data.generators :as generators]))
 
-
-
-
-
-;; 2014-09-13 cwr: obviously very rough intial prototypes...
-
 ;;for testing: make GP programs from these functions
 ;; (def example-function-set
 ;;   '(+ - * /))
@@ -95,29 +89,6 @@
 ;; changing args to [functions terminals size]
 ;;
 
-;; (defn build-gp-tree
-;;   "make a random expression with given function names, terminals and size"
-;;   [functions terminals size]
-;;   (cond (< size 1) nil
-;;         ;; (= size 1) (rand-nth terminals)
-;;         (= size 1) (choose-terminal terminals)
-;;         :else (let [ ;; select random function from map
-;;                     function (rand-nth (keys functions))
-;;                     ;; index function map by selected function name
-;;                     arglist (function functions)
-;;                     ;; number of args for this function
-;;                     arg-count (count arglist)
-;;                     ;; list of subtrees for each arg
-;;                     args (build-gp-tree-arglist arglist
-;;                                                 functions
-;;                                                 terminals
-;;                                                 (dec size))]
-;;                 ;; if any of those are nil...
-;;                 (if (some #(= % nil) args)
-;;                   ;; return a non-nil one [XXX hope there is one!!!]
-;;                   (first (remove #(= % nil) args))
-;;                   ;; otherwise the fn consed onto arg expressions
-;;                   (cons function args)))))
 (defn build-gp-tree
   "make a random expression with given function names, terminals and size"
   [functions terminals size]
@@ -142,138 +113,12 @@
                   ;; otherwise the fn consed onto arg expressions
                   (cons function args)))))
 
-
 (defn print-gp-tree
   "for testing during development"
   [tree]
   (clojure.pprint/pprint tree)
   (print "size ")
   (print (gp-tree-size tree)))
-
-
-
-
-
-;; playing with crossover
-
-;; (defn find-all-subtrees (tree)
-;;   (let [subtrees []
-;;         r (fn r [x]
-;;                   (if (seq? x) 
-;;                     (conj (r (first x))
-;;                           (r (rest x)))
-;;                     x))]
-;;     ((r tree))))
-
-;; (defn find-all-subtrees [tree]
-;;   (if (seq? tree) 
-;;     (conj (find-all-subtrees (first tree))
-;;           (find-all-subtrees (rest tree)))
-;;     [tree]))
-
-;; (defn find-all-subtrees [tree]
-;;   (if (coll? tree)
-;;     (if (empty? tree)
-;;       []
-;;       (conj (find-all-subtrees (first tree))
-;;             (find-all-subtrees (rest tree))))
-;;     [tree]))
-
-;; ;; try going back to this, currently broken
-;; (defn find-all-subtrees [tree]
-;;   (let [subtrees []
-;;         r (fn r [x]
-;;             (if (coll? x)
-;;               (when (not (empty? x))
-;;                 (conj subtrees (first x))
-;;                 (find-all-subtrees (first x))
-;;                 (find-all-subtrees (rest x))) 
-;;               (conj subtrees x)))]
-;;     (r tree)
-;;     subtrees))
-
-;; ;; try going back to this, currently broken
-;; (defn find-all-subtrees [tree]
-;;   (let [ ;;subtrees []
-;;         r (fn r [tree subtrees]
-;;             (if (coll? tree)
-;;               (when (not (empty? tree))
-                
-;;                 ;; (conj subtrees (first tree))
-;;                 ;; (r (first tree))
-;;                 ;; (r (rest tree))
-
-                
-;;                 ;; (r (rest tree)
-;;                 ;;    (conj subtrees (first tree)))
-
-;;                 (vec (concat subtrees
-;;                              (r (first tree) [])
-;;                              (r (rest tree) [])))
-
-;;                 ;; (vec (concat (conj subtrees (first tree))
-;;                 ;;              (r (first tree) [])
-;;                 ;;              (r (rest tree) [])))
-
-                
-
-;;                 ) 
-;;               (conj subtrees tree)))]
-;;     (r tree [])))
-
-
-;; ;; try going back to this, currently broken
-;; (defn find-all-subtrees [tree]
-;;   (let [r (fn r [tree subtrees]
-;;             (if (coll? tree)
-;;               (when (not (empty? tree))
-;;                 (vec (concat (conj subtrees tree)
-;;                              (r (first tree) [])
-;;                              (r (rest tree) []))))))]
-;;     (r tree [])))
-
-
-;; try going back to this
-;; (defn find-all-subtrees [tree]
-;;   (let [r (fn r [tree subtrees]
-;;             (when (and (coll? tree)
-;;                        (not (empty? tree)))
-;;               (vec (concat (conj subtrees tree)
-;;                              (r (first tree) [])
-;;                              (r (rest tree) [])))))]
-;;     (r tree [])))
-
-
-;; (def sample-tree
-;;   '(+ a
-;;       (* (- b c)
-;;          (/ d
-;;             (! e)))))
-
-;;; (doseq [x (find-all-subtrees sample-tree)] (clojure.pprint/pprint x))
-
-
-;; (+ a (* (- b c) (/ d (! e))))
-;; a
-;; (* (- b c) (/ d (! e)))
-;; (- b c)
-;; b
-;; c
-;; (/ d (! e))
-;; d
-;; (! e)
-;; e
-
-;; lazy-predator.tree> (doseq [x (find-all-subtrees '(* (+ 3 y) (! 5)))] (clojure.pprint/pprint x))
-;; (* (+ 3 y) (! 5))
-;; ((+ 3 y) (! 5))
-;; (+ 3 y)
-;; (3 y)
-;; (y)
-;; ((! 5))
-;; (! 5)
-;; (5)
-;; nil
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
@@ -368,17 +213,6 @@
 (defn- gp-crossover-splice
   ""
   [tree-a parent-a subtree-a subtree-b functions terminals]
-  ;; (prn (list 'tree-a
-  ;;            tree-a
-  ;;            'parent-a
-  ;;            parent-a
-  ;;            (= parent-a
-  ;;               (:parent subtree-a))
-  ;;            '(:subtree subtree-a)
-  ;;            (:subtree subtree-a)
-  ;;            '(:parent subtree-a)
-  ;;            (:parent subtree-a)
-  ;;            ))
   (if (identical? parent-a
                   (:parent subtree-a))
     (:subtree subtree-b)
@@ -577,7 +411,10 @@
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
 
-(defn maybe? [likelihood]
+(defn maybe?
+  "returns true with a probability of 'likelihood',
+    on average (maybe? 1/3) will return true once every 3 calls."
+  [likelihood]
   (assert (<= 0 likelihood 1) "likelihood should be between 0 and 1")
   (> likelihood
      (generators/float)))
