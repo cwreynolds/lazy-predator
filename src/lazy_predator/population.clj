@@ -1,6 +1,7 @@
 (ns lazy-predator.population
   (:gen-class)
-  (:require [lazy-predator.tree :as tree]))
+  (:require [lazy-predator.tree :as tree]
+            [clojure.data.generators :as generators]))
 
 ;; 2014-10-11
 
@@ -50,3 +51,64 @@
 ;; nil
 
 ;; need utilities to adjust populations to deal with too many or too few
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+;; 2014-10-12
+;;
+;; super-preliminary migration model
+;;
+;; was originally thinking about a "ring of islands" model but decided to try a fully
+;; connected model. Pick two demes, remove a random individual from A, add it to B
+
+
+(defn remove-nth [coll index]
+  (vec (concat (subvec coll 0 index)
+               (subvec coll (inc index)))))
+
+;; call this routine once per new individual, then likelihood scales with the population
+
+(defn migrate
+  "given a population, move an individual from one deme to another.
+   A population is a vector of demes, a deme is a vector of individuals"
+  [population]
+  (let [shuffled-deme-indices (generators/shuffle (range (count population)))
+        a (first shuffled-deme-indices)
+        b (second shuffled-deme-indices)
+        deme-a (nth population a)
+        deme-b (nth population b)
+        random-a (generators/uniform 0 (count deme-a))
+        individual (nth deme-a random-a)
+        new-deme-a (remove-nth deme-a random-a)
+        new-deme-b (conj deme-b individual)]
+    (assoc (assoc population a new-deme-a) b new-deme-b)))
+
+;; (migrate [[1 1 1 1] [2 2 2] [3 3] [4 4 4 4 4]])
+
+
+;; (migrate
+;; [[1 1 1 1] [2 2 2] [3 3] [4 4 4 4 4]])  =>
+;; [[1 1 1 1] [2 2 2] [3] [4 4 4 4 4 3]]
+;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
+;; [[1 1 1 1 2] [2 2] [3 3] [4 4 4 4 4]]
+;; [[1 1 1 1] [2 2 2 3] [3] [4 4 4 4 4]]
+;; [[1 1 1 1 4] [2 2 2] [3 3] [4 4 4 4]]
+;; [[1 1 1 1] [2 2] [3 3] [4 4 4 4 4 2]]
+;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
+;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
+;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
+;; [[1 1 1 1] [2 2 2 4] [3 3] [4 4 4 4]]
+;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
+;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
+;; [[1 1 1] [2 2 2 1] [3 3] [4 4 4 4 4]]
+
+(defn maybe-migrate
+  "given a population, move an individual from one deme to another.
+   A population is a vector of demes, a deme is a vector of individuals"
+  [population]
+  (when (tree/maybe? 0.005) ;; 1/200
+    (migrate population)))
+
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
