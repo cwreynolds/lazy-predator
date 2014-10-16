@@ -1,6 +1,7 @@
 (ns lazy-predator.tree
   (:gen-class)
-  (:require [clojure.data.generators :as generators]))
+  (:require [clojure.data.generators :as generators]
+             [clojure.pprint :as pp]))
 
 ;;for testing: make GP programs from these functions
 ;; (def example-function-set
@@ -35,6 +36,36 @@
    'cos '(true)})
 
 
+;; 20141015 prototype new function set format, more like the first one above
+;;     have a special constructor macro?
+;;     definitely have accessors
+
+(def mark-4-function-set
+  '{+ {:type :number :args (:number :number)}
+    - {:type :number :args (:number :number)}
+    * {:type :number :args (:number :number)}
+    / {:type :number :args (:number :number)}
+    abs {:type :number :args (:number)}})
+
+(defn get-function-type
+  "given a GP function set, and a function name, get its type"
+  [function-symbol functions]
+  (assert (contains? functions function-symbol)
+          (str function-symbol " not in function set"))
+  (:type (function-symbol functions)))
+
+(defn get-function-arglist
+  "given a GP function set, and a function name, get its type"
+  [function-symbol functions]
+  (assert (contains? functions function-symbol)
+          (str function-symbol " not in function set"))
+  (:args (function-symbol functions)))
+
+;; (get-function-type '+ mark-4-function-set)
+;; (get-function-arglist '+ mark-4-function-set)
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
 ;; for testing: make GP programs with these terminals
 ;; (def example-terminal-set
 ;;   '(0 1 2 3 4 5 6 7 8 9 x y))
@@ -43,6 +74,7 @@
 (def example-terminal-set
   '(x y :float01 :float-plus-minus-1 :float-plus-minus-10))
 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 (defn choose-terminal
   "choose a random terminal from set, instantiate ephemeral constants"
