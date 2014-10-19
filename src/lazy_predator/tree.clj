@@ -40,12 +40,20 @@
 ;;     have a special constructor macro?
 ;;     definitely have accessors
 
+;; (def mark-4-function-set
+;;   '{+ {:type :number :args (:number :number)}
+;;     - {:type :number :args (:number :number)}
+;;     * {:type :number :args (:number :number)}
+;;     / {:type :number :args (:number :number)}
+;;     abs {:type :number :args (:number)}})
 (def mark-4-function-set
   '{+ {:type :number :args (:number :number)}
     - {:type :number :args (:number :number)}
     * {:type :number :args (:number :number)}
     / {:type :number :args (:number :number)}
-    abs {:type :number :args (:number)}})
+    expt {:type :number :args (:number :number)}
+    cos {:type :number :args (:number)}
+    sin {:type :number :args (:number)}})
 
 (defn get-function-type
   "given a GP function set, and a function name, get its type"
