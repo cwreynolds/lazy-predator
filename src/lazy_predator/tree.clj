@@ -162,13 +162,57 @@
    :parent parent
    :type type})
 
+;; XXX FIX -- not a good idea to have an argument named type since it
+;; shadows the Clojure built-in function that gets an object's type. 
+
+;; (defn- linearize-gp-tree-2
+;;   "given a gp tree (and its parent cons, and its STGP type),
+;;    append a description of each subexpression to the given table (a vector)"
+;;   [tree functions terminals parent type table]
+;;   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
+
+;; ;;     (if-not (list? tree)
+
+;;     (if (= 'clojure.lang.Cons (class tree))
+      
+;;       ;; new-table
+;;       (do
+;;         (prn (list "linearize-gp-tree-2 done: (class tree)=" (class tree) " tree=" tree))
+;;         new-table)
+      
+;;       (do
+;;         ;; not sure about these error checks:
+;;         ;; just a temporary dev expedient, or leave in long term?
+;;         (assert (not (empty? tree))
+;;                 "GP tree is unexpectedly empty")
+;;         (assert (contains? functions (first tree))
+;;                 "first of expression not in function set?")
+;;         (apply concat
+;;                new-table
+;;                (maplist (fn [arglist]
+;;                           (linearize-gp-tree-2 (first arglist) functions terminals arglist type []))
+;;                         (rest tree)))))))
+
+
 (defn- linearize-gp-tree-2
   "given a gp tree (and its parent cons, and its STGP type),
    append a description of each subexpression to the given table (a vector)"
-  [tree functions terminals parent type table]
-  (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
-    (if-not (list? tree)
+  [tree functions terminals parent tree-type table]
+  (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent tree-type)])]
+
+    ;; used to say (if-not (list? tree) ...) not sure why that stopped
+    ;; working while debugging sin-sin example
+    
+    (if  (or (keyword? tree)
+             (symbol? tree)
+             (number? tree))
+      
       new-table
+      
+      ;; (do
+      ;;   (prn (list "linearize-gp-tree-2 done: (type tree)=" (type tree) " (list? tree)=" (list? tree) " tree=" tree))
+      ;;   new-table)
+      
       (do
         ;; not sure about these error checks:
         ;; just a temporary dev expedient, or leave in long term?
@@ -179,8 +223,9 @@
         (apply concat
                new-table
                (maplist (fn [arglist]
-                          (linearize-gp-tree-2 (first arglist) functions terminals arglist type []))
+                          (linearize-gp-tree-2 (first arglist) functions terminals arglist tree-type []))
                         (rest tree)))))))
+
 
 (defn linearize-gp-tree
   "convert tree into table of all subexpressions, their parent cones, and STGP types"
@@ -244,10 +289,19 @@
   "given two GP trees, replace a random subtree of A with a random subtree of B"
   [tree-a tree-b functions terminals]
   (is-mark-4-function-set? functions)
+  (assert (not (empty? functions)))
+  (assert (not (empty? terminals)))
   (let [table-a (linearize-gp-tree tree-a functions terminals)
         table-b (linearize-gp-tree tree-b functions terminals)
         subtree-a (generators/rand-nth table-a)
         subtree-b (generators/rand-nth table-b)]
+
+    (newline)
+    (pp/pprint 'table-a) (pp/pprint table-a) (newline)
+    (pp/pprint 'table-b) (pp/pprint table-b) (newline)
+    (pp/pprint 'subtree-a) (pp/pprint subtree-a) (newline)
+    (pp/pprint 'subtree-b) (pp/pprint subtree-b) (newline)
+    
     (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals)))
 
 
