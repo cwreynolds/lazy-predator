@@ -135,7 +135,10 @@
   (print "size ")
   (print (gp-tree-size tree)))
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+;;
+;; XXX FIX -- weird, maybe temporary scaffolding
+
 
 ;; XXX maybe temporary, just use this CL throwback as a utility for now
 (defn maplist
@@ -145,7 +148,18 @@
 ;; (maplist (fn [x] [(first x) x]) '(a b c d))
 ;; => ([a (a b c d)] [b (b c d)] [c (c d)] [d (d)])
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+
+(defn- non-list-object?
+  "XXX FIX sometime like Common Lisp's atom predicate, a non-collection object"
+  [x]
+  ;; probably should be other clauses
+  ;; probably is a better Clojure way to do this
+  (or (keyword? x)
+      (symbol? x)
+      (number? x)))
+
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 ;; 2014-10-04
 
@@ -165,33 +179,6 @@
 ;; XXX FIX -- not a good idea to have an argument named type since it
 ;; shadows the Clojure built-in function that gets an object's type. 
 
-;; (defn- linearize-gp-tree-2
-;;   "given a gp tree (and its parent cons, and its STGP type),
-;;    append a description of each subexpression to the given table (a vector)"
-;;   [tree functions terminals parent type table]
-;;   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent type)])]
-
-;; ;;     (if-not (list? tree)
-
-;;     (if (= 'clojure.lang.Cons (class tree))
-      
-;;       ;; new-table
-;;       (do
-;;         (prn (list "linearize-gp-tree-2 done: (class tree)=" (class tree) " tree=" tree))
-;;         new-table)
-      
-;;       (do
-;;         ;; not sure about these error checks:
-;;         ;; just a temporary dev expedient, or leave in long term?
-;;         (assert (not (empty? tree))
-;;                 "GP tree is unexpectedly empty")
-;;         (assert (contains? functions (first tree))
-;;                 "first of expression not in function set?")
-;;         (apply concat
-;;                new-table
-;;                (maplist (fn [arglist]
-;;                           (linearize-gp-tree-2 (first arglist) functions terminals arglist type []))
-;;                         (rest tree)))))))
 
 
 (defn- linearize-gp-tree-2
@@ -199,20 +186,8 @@
    append a description of each subexpression to the given table (a vector)"
   [tree functions terminals parent tree-type table]
   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent tree-type)])]
-
-    ;; used to say (if-not (list? tree) ...) not sure why that stopped
-    ;; working while debugging sin-sin example
-    
-    (if  (or (keyword? tree)
-             (symbol? tree)
-             (number? tree))
-      
+    (if (non-list-object? tree)
       new-table
-      
-      ;; (do
-      ;;   (prn (list "linearize-gp-tree-2 done: (type tree)=" (type tree) " (list? tree)=" (list? tree) " tree=" tree))
-      ;;   new-table)
-      
       (do
         ;; not sure about these error checks:
         ;; just a temporary dev expedient, or leave in long term?
@@ -225,7 +200,6 @@
                (maplist (fn [arglist]
                           (linearize-gp-tree-2 (first arglist) functions terminals arglist tree-type []))
                         (rest tree)))))))
-
 
 (defn linearize-gp-tree
   "convert tree into table of all subexpressions, their parent cones, and STGP types"
@@ -267,22 +241,28 @@
 ;; nil
 
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 ;; 2014-10-06
 ;; crossover experiment
 
 (defn- gp-crossover-splice
-  ""
+  "replace a given subtree of tree A with a given subtree of tree b"
   [tree-a parent-a subtree-a subtree-b functions terminals]
   (if (identical? parent-a
                   (:parent subtree-a))
     (:subtree subtree-b)
-    (if (list? tree-a)
+    (if (non-list-object? tree-a)
+      tree-a
       (cons (first tree-a)
-            (maplist (fn [arglist] (gp-crossover-splice (first arglist) arglist subtree-a subtree-b functions terminals))
-                     (rest tree-a)))
-      tree-a)))
+            (maplist (fn [arglist]
+                       (gp-crossover-splice (first arglist)
+                                            arglist
+                                            subtree-a
+                                            subtree-b
+                                            functions
+                                            terminals))
+                     (rest tree-a))))))
 
 
 (defn gp-crossover
@@ -295,13 +275,6 @@
         table-b (linearize-gp-tree tree-b functions terminals)
         subtree-a (generators/rand-nth table-a)
         subtree-b (generators/rand-nth table-b)]
-
-    (newline)
-    (pp/pprint 'table-a) (pp/pprint table-a) (newline)
-    (pp/pprint 'table-b) (pp/pprint table-b) (newline)
-    (pp/pprint 'subtree-a) (pp/pprint subtree-a) (newline)
-    (pp/pprint 'subtree-b) (pp/pprint subtree-b) (newline)
-    
     (gp-crossover-splice tree-a :root subtree-a subtree-b functions terminals)))
 
 
@@ -480,7 +453,7 @@
 ;; (aaa (bbb d (aaa d e f)) (ccc e) (bbb (bbb d e) W))
 ;; nil
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 
 (defn maybe?
@@ -500,12 +473,15 @@
            (< n min) min
            :else n)))
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 ;; 2014-10-08
 ;; jiggle mutation experiment
 ;; occasionally replace a number with slightly displaced value
 ;; this ought to respect STGP types, it is just a simple prototype
+;;
+;; this code assumes type :float01
+;; whereas until 2014-10-26, test-jiggle-gp-tree had constants on [1 5]
 
 
 (defn jiggle-float01 [n]
@@ -515,21 +491,20 @@
                     (* (- max min)
                        (generators/float))))))
 
-
 (defn jiggle-gp-tree [tree]
-  (if (list? tree)
-    (cons (first tree)
-          (map jiggle-gp-tree
-               (rest tree)))
+  (if (non-list-object? tree)
     (if (and (number? tree)
              (maybe? 0.1))
       (jiggle-float01 tree)
-      tree)))
+      tree)
+    (cons (first tree)
+          (map jiggle-gp-tree
+               (rest tree)))))
 
 (defn test-jiggle-gp-tree [n]
-  (let [tree '(a 1
-                 (b (d 2 3)
-                    (e 4 5)))]
+  (let [tree '(a 0.1
+                 (b (d 0.2 0.3)
+                    (e 0.4 0.5)))]
     (doseq [i (range n)]
       (prn (jiggle-gp-tree tree)))))
 
@@ -543,7 +518,7 @@
       (recur (jiggle-float01 n)
              (inc i)))))
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 ;; 2014-10-09
 ;; hoist mutation experiment
@@ -567,7 +542,7 @@
     (doseq [i (range n)]
       (prn (hoist-gp-subtree tree functions terminals)))))
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 
 ;;; XXX TESTING STUFF
@@ -611,7 +586,7 @@
 
 
 
-;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 
 ;; BTW, I'd like to tweak the pp params to print like this:
