@@ -148,17 +148,6 @@
 ;; (maplist (fn [x] [(first x) x]) '(a b c d))
 ;; => ([a (a b c d)] [b (b c d)] [c (c d)] [d (d)])
 
-
-(defn- non-list-object?
-  "XXX FIX sometime like Common Lisp's atom predicate, a non-collection object"
-  [x]
-  ;; probably should be other clauses
-  ;; probably is a better Clojure way to do this
-  (or (keyword? x)
-      (symbol? x)
-      (number? x)))
-
-
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 ;; 2014-10-04
@@ -179,27 +168,29 @@
 ;; XXX FIX -- not a good idea to have an argument named type since it
 ;; shadows the Clojure built-in function that gets an object's type. 
 
-
+;; not sure about these error checks:
+;; just a temporary dev expedient, or leave in long term?
 
 (defn- linearize-gp-tree-2
   "given a gp tree (and its parent cons, and its STGP type),
    append a description of each subexpression to the given table (a vector)"
   [tree functions terminals parent tree-type table]
   (let [new-table (concat table [(linearize-gp-tree-descriptor tree parent tree-type)])]
-    (if (non-list-object? tree)
-      new-table
-      (do
-        ;; not sure about these error checks:
-        ;; just a temporary dev expedient, or leave in long term?
-        (assert (not (empty? tree))
-                "GP tree is unexpectedly empty")
-        (assert (contains? functions (first tree))
-                "first of expression not in function set?")
-        (apply concat
-               new-table
-               (maplist (fn [arglist]
-                          (linearize-gp-tree-2 (first arglist) functions terminals arglist tree-type []))
-                        (rest tree)))))))
+    (if (coll? tree)
+      (do (assert (not (empty? tree))
+                  "GP tree is unexpectedly empty")
+          (assert (contains? functions (first tree))
+                  "first of expression not in function set?")
+          (apply concat
+                 new-table
+                 (maplist (fn [arglist] (linearize-gp-tree-2 (first arglist)
+                                                            functions
+                                                            terminals
+                                                            arglist
+                                                            tree-type
+                                                            []))
+                          (rest tree))))
+      new-table)))
 
 (defn linearize-gp-tree
   "convert tree into table of all subexpressions, their parent cones, and STGP types"
@@ -252,8 +243,7 @@
   (if (identical? parent-a
                   (:parent subtree-a))
     (:subtree subtree-b)
-    (if (non-list-object? tree-a)
-      tree-a
+    (if (coll? tree-a)
       (cons (first tree-a)
             (maplist (fn [arglist]
                        (gp-crossover-splice (first arglist)
@@ -262,7 +252,8 @@
                                             subtree-b
                                             functions
                                             terminals))
-                     (rest tree-a))))))
+                     (rest tree-a)))
+      tree-a)))
 
 
 (defn gp-crossover
@@ -492,14 +483,14 @@
                        (generators/float))))))
 
 (defn jiggle-gp-tree [tree]
-  (if (non-list-object? tree)
+  (if (coll? tree)
+    (cons (first tree)
+          (map jiggle-gp-tree
+               (rest tree)))
     (if (and (number? tree)
              (maybe? 0.1))
       (jiggle-float01 tree)
-      tree)
-    (cons (first tree)
-          (map jiggle-gp-tree
-               (rest tree)))))
+      tree)))
 
 (defn test-jiggle-gp-tree [n]
   (let [tree '(a 0.1
