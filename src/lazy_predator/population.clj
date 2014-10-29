@@ -132,6 +132,30 @@
                    (map :fitness 
                         (flatten population)))))
 
+(defn population-snapshot
+  "returns min/average/max fitness of a population, plus the max fit tree"
+  [population]
+  (let [flat-population (flatten population)
+        selected-individuals (remove (fn [x] (let [f (:fitness x)]
+                                              (or (nil? f)
+                                                  (Double/isNaN f))))
+                                     flat-population)
+        selected-fitnesses (map :fitness selected-individuals)
+        ave (average selected-fitnesses)
+        min (when-not (empty? selected-individuals)
+              (apply min-key :fitness selected-individuals))
+        max (when-not (empty? selected-individuals)
+              (apply max-key :fitness selected-individuals))]
+
+    ;; (clojure.pprint/pprint population)
+    ;; (clojure.pprint/pprint min)
+    ;; (clojure.pprint/pprint max)
+    
+    (list (:fitness  min)
+          ave
+          (:fitness max)
+          (:tree max))))
+
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 

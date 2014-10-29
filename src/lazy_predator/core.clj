@@ -119,8 +119,18 @@
                                            functions
                                            terminals
                                            10)]
-      (prn (list individuals
-                 (pop/average-fitness population)))
+      ;; (prn (list individuals
+      ;;            (pop/average-fitness population)))
+
+
+      (when (= 0 (mod individuals 20))
+        (newline)
+        (prn individuals)
+        (doseq [x (pop/population-snapshot population)] 
+          (pp/pprint x)))
+
+
+      
       (when (< individuals n)
         (recur (inc individuals)
                (pop/next-gp-individual population
