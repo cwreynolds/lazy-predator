@@ -122,10 +122,13 @@
     (/ (reduce + x)
        (count x))))
 
+;; maybe have this collect other stats like max and min?
+
 (defn average-fitness
   "average fitness of a population"
   [population]
-  (average (remove nil?
+  (average (remove (fn [x] (or (nil? x)
+                              (Double/isNaN x)))
                    (map :fitness 
                         (flatten population)))))
 

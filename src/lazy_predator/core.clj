@@ -16,7 +16,15 @@
 (defn sin [x] (Math/sin x))
 (defn cos [x] (Math/cos x))
 (defn pow [x y] (Math/pow x y))
-(defn / [x y] (if (= y 0) 0 (clojure.core// x y)))
+;; (defn / [x y]
+;;   (prn (list '/ x y))
+;;   (if (= y 0) 0 (clojure.core// x y)))
+(defn / [x y]
+  ;;(prn (list '/ x y))
+  (if (or (= y 0)
+          (= y 0.0))
+    0
+    (clojure.core// x y)))
 
 ;; 20141018 just a for-instance fitness function for now:
 ;;
@@ -51,6 +59,28 @@
 ;;                           samples))))
 
 
+;; (defn sin-sin-fitness
+;;   ([program] (sin-sin-fitness program 100))
+;;   ([program samples] (let [xs (repeatedly samples #(generators/float))
+;;                            correct (map sin-sin-example xs)
+;;                            evolved (map (fn [a]
+;;                                           (binding [x a]
+;;                                             (eval program)))
+;;                                         xs)
+;;                            sum-diff-sq (apply +
+;;                                               (map fit/difference-squared
+;;                                                    correct
+;;                                                    evolved))]
+
+;;                        (prn (list 'sum-diff-sq sum-diff-sq))
+                       
+;;                        (/ sum-diff-sq samples))))
+
+;; xxx oh, I think this was returning an error metric, so higher fitness actually
+;; meant worse fitness. Switching to simply inverting the sign. Bigger errors will be
+;; more negative, hence lower fitness. Lazy Predator is supposed to only care about
+;; relative fitness, so...
+
 (defn sin-sin-fitness
   ([program] (sin-sin-fitness program 100))
   ([program samples] (let [xs (repeatedly samples #(generators/float))
@@ -62,15 +92,19 @@
                            sum-diff-sq (apply +
                                               (map fit/difference-squared
                                                    correct
-                                                   evolved))]
+                                                   evolved))
+                           ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
+                           fitness (if (Double/isNaN ave-diff-sq-per-sample)
+                                     Double/NEGATIVE_INFINITY
+                                     ave-diff-sq-per-sample)]
 
-                       (prn (list 'sum-diff-sq sum-diff-sq))
+                       ;;(prn (list 'fitness fitness))
                        
-                       (/ sum-diff-sq samples))))
+                       fitness)))
 
 (defn strawman-sin-sin-run
   "cobble together the first version of a run in Lazy Predator."
-  [n]
+  [n population-count deme-count]
   (let [terminals '(x :float01)
         functions '{+   {:type :number :args (:number :number)}
                     -   {:type :number :args (:number :number)}
@@ -80,7 +114,11 @@
                     sin {:type :number :args (:number)}
                     cos {:type :number :args (:number)}}] 
     (loop [individuals 0
-           population (pop/make-population 20 1 functions terminals 10)]
+           population (pop/make-population population-count
+                                           deme-count
+                                           functions
+                                           terminals
+                                           10)]
       (prn (list individuals
                  (pop/average-fitness population)))
       (when (< individuals n)
