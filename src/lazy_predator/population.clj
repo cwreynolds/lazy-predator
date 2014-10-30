@@ -107,7 +107,7 @@
 (defn maybe-migrate
   "occasionally move an individual from one population deme to another."
   [population]
-  (if (tree/maybe? 0.005) ;; 1/200
+  (if (tree/maybe? 0.02) ;; 1/50
     (migrate population)
     population))
 
@@ -158,12 +158,53 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
+;; (defn next-gp-individual
+;;   "creates new population with one new individual"
+;;   [population fitness functions terminals]
+;;   (let [shuffled-demes (shuffle population)
+;;         deme (first shuffled-demes)
+;;         other-demes (vec (rest shuffled-demes))
+;;         _ (assert (> (count deme) 3))   ; ???
+;;         shuffled-individuals (shuffle deme)
+;;         [a b c] shuffled-individuals
+;;         other-individuals (vec (drop 3 shuffled-individuals))
 
+;;         ;; XXX FIX use actual fitness function not random
+        
+;;         ;; a (assoc a :fitness (generators/float))
+;;         ;; b (assoc b :fitness (generators/float))
+;;         ;; c (assoc c :fitness (generators/float))
+
+;;         a (assoc a :fitness (fitness (:tree a)))
+;;         b (assoc b :fitness (fitness (:tree b)) )
+;;         c (assoc c :fitness (fitness (:tree c)) )
+
+;;         sorted-by-fitness (reverse (sort-by :fitness (list a b c)))
+;;         [p q] sorted-by-fitness
+;;         o (make-individual (tree/gp-crossover (:tree p)
+;;                                               (:tree q)
+;;                                               functions
+;;                                               terminals))]
+;;     ;; (newline)
+;;     ;; (prn :p)
+;;     ;; (pp/pprint p)
+;;     ;; (prn :q)
+;;     ;; (pp/pprint q)
+;;     ;; (prn :o)
+;;     ;; (pp/pprint o)
+    
+;;     ;; conjoin two parents and new offspring to the end of the selected deme,
+;;     ;; conjoin that deme to the end of the other deems, return this new population
+;;     (conj other-demes
+;;           (conj (conj (conj other-individuals
+;;                             p)
+;;                       q)
+;;                 o))))
 
 (defn next-gp-individual
   "creates new population with one new individual"
   [population fitness functions terminals]
-  (let [shuffled-demes (shuffle population)
+  (let [shuffled-demes (shuffle (maybe-migrate population))
         deme (first shuffled-demes)
         other-demes (vec (rest shuffled-demes))
         _ (assert (> (count deme) 3))   ; ???
@@ -171,29 +212,25 @@
         [a b c] shuffled-individuals
         other-individuals (vec (drop 3 shuffled-individuals))
 
-        ;; XXX FIX use actual fitness function not random
-        
-        ;; a (assoc a :fitness (generators/float))
-        ;; b (assoc b :fitness (generators/float))
-        ;; c (assoc c :fitness (generators/float))
+        af (assoc a :fitness (fitness (:tree a)))
+        bf (assoc b :fitness (fitness (:tree b)) )
+        cf (assoc c :fitness (fitness (:tree c)) )
 
-        a (assoc a :fitness (fitness (:tree a)))
-        b (assoc b :fitness (fitness (:tree b)) )
-        c (assoc c :fitness (fitness (:tree c)) )
-
-        sorted-by-fitness (reverse (sort-by :fitness (list a b c)))
+        sorted-by-fitness (reverse (sort-by :fitness (list af bf cf)))
         [p q] sorted-by-fitness
-        o (make-individual (tree/gp-crossover (:tree p)
-                                              (:tree q)
-                                              functions
-                                              terminals))]
-    ;; (newline)
-    ;; (prn :p)
-    ;; (pp/pprint p)
-    ;; (prn :q)
-    ;; (pp/pprint q)
-    ;; (prn :o)
-    ;; (pp/pprint o)
+
+        tree (tree/gp-crossover (:tree p)
+                                (:tree q)
+                                functions
+                                terminals)
+        
+        ;; parameters for mutations should be passed in as args
+        tree (if (tree/maybe? 0.05)
+               (tree/hoist-gp-subtree tree functions terminals)
+               tree)
+        tree (tree/jiggle-gp-tree tree)
+        o (make-individual tree)
+        ]
     
     ;; conjoin two parents and new offspring to the end of the selected deme,
     ;; conjoin that deme to the end of the other deems, return this new population
