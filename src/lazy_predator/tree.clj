@@ -488,7 +488,7 @@
           (map jiggle-gp-tree
                (rest tree)))
     (if (and (number? tree)
-             (maybe? 0.1))
+             (maybe? 0.1)) ;; 20141030 jiggle likelihood: 0.1 -> 0.4
       (jiggle-float01 tree)
       tree)))
 

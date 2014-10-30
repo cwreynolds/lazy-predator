@@ -225,7 +225,8 @@
                                 terminals)
         
         ;; parameters for mutations should be passed in as args
-        tree (if (tree/maybe? 0.05)
+        ;; 20141030 hoist likelihood: 0.05 -> 0.2
+        tree (if (tree/maybe? 0.2)
                (tree/hoist-gp-subtree tree functions terminals)
                tree)
         tree (tree/jiggle-gp-tree tree)
