@@ -213,9 +213,15 @@
         ;; parameters for mutations should be passed in as args
         ;; 20141030 hoist likelihood: 0.05 -> 0.2
         ;; 0.2 -> 0.4 which seems ridiculously high
-        tree (if (tree/maybe? 0.4)
+        ;; back to 0.2
+        ;; set to conservative "occasional" value along with hard limit
+        tree (if (tree/maybe? 1/20)
                (tree/hoist-gp-subtree tree functions terminals)
                tree)
+
+        ;; parameters for mutations should be passed in as args
+        tree (tree/limit-gp-tree-size 60 tree functions terminals)
+        
         tree (tree/jiggle-gp-tree tree)
         o (make-individual tree)
         ]

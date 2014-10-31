@@ -535,6 +535,18 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
+(defn limit-gp-tree-size
+  "if tree size exceeds max-size hoist until subtree is small enough"
+  [max-size tree functions terminals]
+  (if (> (gp-tree-size tree) max-size)
+    (limit-gp-tree-size max-size
+                        (hoist-gp-subtree tree functions terminals)
+                        functions
+                        terminals)
+    tree))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
 
 ;;; XXX TESTING STUFF
 ;;; should be in separate test file
