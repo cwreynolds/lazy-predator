@@ -64,42 +64,70 @@
 ;; currently called "migrate" and "maybe-migrate" -- might be too short/generic?
 
 
-(defn remove-nth [coll index]
-  (vec (concat (subvec coll 0 index)
-               (subvec coll (inc index)))))
+;; (defn remove-nth [coll index]
+;;   (vec (concat (subvec coll 0 index)
+;;                (subvec coll (inc index)))))
+
+;; (defn migrate
+;;   "given a population, move an individual from one deme to another.
+;;    A population is a vector of demes, a deme is a vector of individuals"
+;;   [population]
+;;   (if (< (count population) 2)
+;;     population
+;;     (let [shuffled-deme-indices (generators/shuffle (range (count population)))
+;;           a (first shuffled-deme-indices)
+;;           b (second shuffled-deme-indices)
+;;           deme-a (nth population a)
+;;           deme-b (nth population b)
+;;           random-a (generators/uniform 0 (count deme-a))
+;;           individual (nth deme-a random-a)
+;;           new-deme-a (remove-nth deme-a random-a)
+;;           new-deme-b (conj deme-b individual)]
+;;       (assoc (assoc population a new-deme-a) b new-deme-b))))
+
+;; ;; (migrate
+;; ;; [[1 1 1 1] [2 2 2] [3 3] [4 4 4 4 4]])  =>
+;; ;; [[1 1 1 1] [2 2 2] [3] [4 4 4 4 4 3]]
+;; ;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
+;; ;; [[1 1 1 1 2] [2 2] [3 3] [4 4 4 4 4]]
+;; ;; [[1 1 1 1] [2 2 2 3] [3] [4 4 4 4 4]]
+;; ;; [[1 1 1 1 4] [2 2 2] [3 3] [4 4 4 4]]
+;; ;; [[1 1 1 1] [2 2] [3 3] [4 4 4 4 4 2]]
+;; ;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
+;; ;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
+;; ;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
+;; ;; [[1 1 1 1] [2 2 2 4] [3 3] [4 4 4 4]]
+;; ;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
+;; ;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
+;; ;; [[1 1 1] [2 2 2 1] [3 3] [4 4 4 4 4]]
 
 (defn migrate
-  "given a population, move an individual from one deme to another.
-   A population is a vector of demes, a deme is a vector of individuals"
+  "given a population, pick 2 demes at random, pick and individual at random from both,
+   swap them. A population is a vector of demes, a deme is a vector of individuals"
   [population]
   (if (< (count population) 2)
     population
-    (let [shuffled-deme-indices (generators/shuffle (range (count population)))
-          a (first shuffled-deme-indices)
-          b (second shuffled-deme-indices)
-          deme-a (nth population a)
-          deme-b (nth population b)
-          random-a (generators/uniform 0 (count deme-a))
-          individual (nth deme-a random-a)
-          new-deme-a (remove-nth deme-a random-a)
-          new-deme-b (conj deme-b individual)]
-      (assoc (assoc population a new-deme-a) b new-deme-b))))
+    (let [shuffled-demes (shuffle population)
+          [deme1 deme2] shuffled-demes
+          other-demes (vec (drop 2 shuffled-demes))
+          shuffled-individuals1 (shuffle deme1)
+          shuffled-individuals2 (shuffle deme2)
+          new-deme1 (vec (conj (drop 1 shuffled-individuals1)
+                               (first shuffled-individuals2)))
+          new-deme2 (vec (conj (drop 1 shuffled-individuals2)
+                               (first shuffled-individuals1)))] 
+      (conj (conj other-demes new-deme1) new-deme2))))
 
-;; (migrate
-;; [[1 1 1 1] [2 2 2] [3 3] [4 4 4 4 4]])  =>
-;; [[1 1 1 1] [2 2 2] [3] [4 4 4 4 4 3]]
-;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
-;; [[1 1 1 1 2] [2 2] [3 3] [4 4 4 4 4]]
-;; [[1 1 1 1] [2 2 2 3] [3] [4 4 4 4 4]]
-;; [[1 1 1 1 4] [2 2 2] [3 3] [4 4 4 4]]
-;; [[1 1 1 1] [2 2] [3 3] [4 4 4 4 4 2]]
-;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
-;; [[1 1 1 1] [2 2] [3 3 2] [4 4 4 4 4]]
-;; [[1 1 1] [2 2 2] [3 3] [4 4 4 4 4 1]]
-;; [[1 1 1 1] [2 2 2 4] [3 3] [4 4 4 4]]
-;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
-;; [[1 1 1 1] [2 2 2] [3 3 4] [4 4 4 4]]
-;; [[1 1 1] [2 2 2 1] [3 3] [4 4 4 4 4]]
+;; (pop/migrate
+;; [[1 1 1 1] [2 2 2] [3 3] [4 4 4 4 4]])
+;; [[2 2 2] [3 3] [1 4 4 4 4] [4 1 1 1]]
+;; [[3 3] [1 1 1 1] [4 2 2] [2 4 4 4 4]]
+;; [[2 2 2] [1 1 1 1] [4 3] [3 4 4 4 4]]
+;; [[1 1 1 1] [2 2 2] [4 3] [3 4 4 4 4]]
+;; [[3 3] [2 2 2] [4 1 1 1] [1 4 4 4 4]]
+;; [[1 1 1 1] [2 2 2] [3 4 4 4 4] [4 3]]
+;; [[3 3] [4 4 4 4 4] [1 2 2] [2 1 1 1]]
+
 
 ;; call this routine once per new individual, then likelihood scales with the population
 ;; (allow probability value to be passed in?)
@@ -158,48 +186,6 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-;; (defn next-gp-individual
-;;   "creates new population with one new individual"
-;;   [population fitness functions terminals]
-;;   (let [shuffled-demes (shuffle population)
-;;         deme (first shuffled-demes)
-;;         other-demes (vec (rest shuffled-demes))
-;;         _ (assert (> (count deme) 3))   ; ???
-;;         shuffled-individuals (shuffle deme)
-;;         [a b c] shuffled-individuals
-;;         other-individuals (vec (drop 3 shuffled-individuals))
-
-;;         ;; XXX FIX use actual fitness function not random
-        
-;;         ;; a (assoc a :fitness (generators/float))
-;;         ;; b (assoc b :fitness (generators/float))
-;;         ;; c (assoc c :fitness (generators/float))
-
-;;         a (assoc a :fitness (fitness (:tree a)))
-;;         b (assoc b :fitness (fitness (:tree b)) )
-;;         c (assoc c :fitness (fitness (:tree c)) )
-
-;;         sorted-by-fitness (reverse (sort-by :fitness (list a b c)))
-;;         [p q] sorted-by-fitness
-;;         o (make-individual (tree/gp-crossover (:tree p)
-;;                                               (:tree q)
-;;                                               functions
-;;                                               terminals))]
-;;     ;; (newline)
-;;     ;; (prn :p)
-;;     ;; (pp/pprint p)
-;;     ;; (prn :q)
-;;     ;; (pp/pprint q)
-;;     ;; (prn :o)
-;;     ;; (pp/pprint o)
-    
-;;     ;; conjoin two parents and new offspring to the end of the selected deme,
-;;     ;; conjoin that deme to the end of the other deems, return this new population
-;;     (conj other-demes
-;;           (conj (conj (conj other-individuals
-;;                             p)
-;;                       q)
-;;                 o))))
 
 (defn next-gp-individual
   "creates new population with one new individual"
@@ -226,7 +212,8 @@
         
         ;; parameters for mutations should be passed in as args
         ;; 20141030 hoist likelihood: 0.05 -> 0.2
-        tree (if (tree/maybe? 0.2)
+        ;; 0.2 -> 0.4 which seems ridiculously high
+        tree (if (tree/maybe? 0.4)
                (tree/hoist-gp-subtree tree functions terminals)
                tree)
         tree (tree/jiggle-gp-tree tree)

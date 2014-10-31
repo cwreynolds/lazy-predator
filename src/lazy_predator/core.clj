@@ -110,7 +110,7 @@
                     -   {:type :number :args (:number :number)}
                     *   {:type :number :args (:number :number)}
                     /   {:type :number :args (:number :number)}
-                    pow {:type :number :args (:number :number)}
+                    ;; pow {:type :number :args (:number :number)}
                     sin {:type :number :args (:number)}
                     cos {:type :number :args (:number)}}] 
     (loop [individuals 0
@@ -125,6 +125,7 @@
 
       (when (= 0 (mod individuals 20))
         (newline)
+        (prn (list 'demes (map count population)))
         (prn individuals)
         (doseq [x (pop/population-snapshot population)] 
           (pp/pprint x)))
