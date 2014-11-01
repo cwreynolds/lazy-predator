@@ -46,41 +46,6 @@
 
 ;; XXX FIX remember this is now the "old" curve
 
-;; (defn sin-sin-fitness
-;;   ([program] (sin-sin-fitness program 100))
-;;   ([program samples] (let [xs (repeatedly samples #(generators/float))
-;;                            correct (map sin-sin-example xs)
-;;                            evolved (map (fn [a]
-;;                                           (binding [x a]
-;;                                             (eval program)))
-;;                                         xs)]
-;;                        (/ (apply +
-;;                                  (map fit/difference-squared correct evolved))
-;;                           samples))))
-
-
-;; (defn sin-sin-fitness
-;;   ([program] (sin-sin-fitness program 100))
-;;   ([program samples] (let [xs (repeatedly samples #(generators/float))
-;;                            correct (map sin-sin-example xs)
-;;                            evolved (map (fn [a]
-;;                                           (binding [x a]
-;;                                             (eval program)))
-;;                                         xs)
-;;                            sum-diff-sq (apply +
-;;                                               (map fit/difference-squared
-;;                                                    correct
-;;                                                    evolved))]
-
-;;                        (prn (list 'sum-diff-sq sum-diff-sq))
-                       
-;;                        (/ sum-diff-sq samples))))
-
-;; xxx oh, I think this was returning an error metric, so higher fitness actually
-;; meant worse fitness. Switching to simply inverting the sign. Bigger errors will be
-;; more negative, hence lower fitness. Lazy Predator is supposed to only care about
-;; relative fitness, so...
-
 (defn sin-sin-fitness
   ([program] (sin-sin-fitness program 100))
   ([program samples] (let [xs (repeatedly samples #(generators/float))
@@ -90,16 +55,13 @@
                                             (eval program)))
                                         xs)
                            sum-diff-sq (apply +
-                                              (map fit/difference-squared
+                                              (map fit/absolute-difference ;; fit/difference-squared
                                                    correct
                                                    evolved))
                            ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
                            fitness (if (Double/isNaN ave-diff-sq-per-sample)
                                      Double/NEGATIVE_INFINITY
                                      ave-diff-sq-per-sample)]
-
-                       ;;(prn (list 'fitness fitness))
-                       
                        fitness)))
 
 (defn strawman-sin-sin-run
