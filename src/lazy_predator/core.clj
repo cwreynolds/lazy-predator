@@ -46,6 +46,8 @@
 
 ;; XXX FIX remember this is now the "old" curve
 
+(defn- square [x] (* x x))
+
 (defn sin-sin-fitness
   ([program] (sin-sin-fitness program 100))
   ([program samples] (let [xs (repeatedly samples #(generators/float))
@@ -54,15 +56,46 @@
                                           (binding [x a]
                                             (eval program)))
                                         xs)
-                           sum-diff-sq (apply +
-                                              (map fit/absolute-difference ;; fit/difference-squared
-                                                   correct
-                                                   evolved))
-                           ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
-                           fitness (if (Double/isNaN ave-diff-sq-per-sample)
-                                     Double/NEGATIVE_INFINITY
-                                     ave-diff-sq-per-sample)]
+                           
+                           ;; sum-diff-sq (apply +
+                           ;;                    (map fit/difference-squared
+                           ;;                         correct
+                           ;;                         evolved))
+                           ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
+                           ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
+                           ;;           Double/NEGATIVE_INFINITY
+                           ;;           ave-diff-sq-per-sample)
+                           
+                           ;; sum-diff-sq (apply +
+                           ;;                    (map fit/absolute-difference
+                           ;;                         correct
+                           ;;                         evolved))
+                           ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
+                           ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
+                           ;;           Double/NEGATIVE_INFINITY
+                           ;;           ave-diff-sq-per-sample)
+
+                           ;; fitness (- (apply max
+                           ;;                   (map fit/absolute-difference
+                           ;;                        correct
+                           ;;                        evolved)))
+                           
+                           fitness (- (square (apply +
+                                                     (map fit/absolute-difference
+                                                          correct
+                                                          evolved))))
+
+                           ]
                        fitness)))
+
+(defn test-sin-sin-fitness
+  ""
+  []
+  (let [body-of-sin-sin-example '(Math/sin (* (/ x 0.03)
+                                              (+ (* (Math/sin (/ x 0.05))
+                                                    0.09)
+                                                 0.11)))]
+    (sin-sin-fitness body-of-sin-sin-example)))
 
 (defn strawman-sin-sin-run
   "cobble together the first version of a run in Lazy Predator."
@@ -87,7 +120,7 @@
 
       (when (= 0 (mod individuals 20))
         (newline)
-        (prn (list 'demes (map count population)))
+        ;; (prn (list 'demes (map count population)))
         (prn individuals)
         (doseq [x (pop/population-snapshot population)] 
           (pp/pprint x)))
