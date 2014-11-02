@@ -50,7 +50,10 @@
 
 (defn sin-sin-fitness
   ([program] (sin-sin-fitness program 100))
-  ([program samples] (let [xs (repeatedly samples #(generators/float))
+  ([program samples] (let [;; just for test, place samples regularly, not random
+                           ;;xs (repeatedly samples #(generators/float))
+                           xs (map #(/ % (float samples)) (range (inc samples)))
+
                            correct (map sin-sin-example xs)
                            evolved (map (fn [a]
                                           (binding [x a]
