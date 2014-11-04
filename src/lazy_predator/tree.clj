@@ -611,5 +611,25 @@
 ;; (print-gp-tree (build-gp-tree example-function-set example-terminal-set 30))
 
 
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-:eof
+;; hmm, plotting is sort of a niche thing, should this be part of a specific app
+;; (link sin-sin) or is it a general purpose utility?
+
+
+(defn gp-tree-to-google-plot
+  "reformats a tree to parenthesized infix notation compatible with Google plot"
+  [tree]
+  (cond (not (coll? tree)) tree
+        (= 3 (count tree)) (let [[op a b] tree]
+                             (list (gp-tree-to-google-plot a)
+                                   op
+                                   (gp-tree-to-google-plot b)))
+        (= 2 (count tree)) (let [[op a] tree]
+                             (list op
+                                   (gp-tree-to-google-plot a)))
+        :else (throw (Exception. "unexpected"))))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+'lazy-predator.tree
