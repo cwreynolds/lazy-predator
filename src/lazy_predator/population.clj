@@ -220,7 +220,9 @@
                tree)
 
         ;; parameters for mutations should be passed in as args
-        tree (tree/limit-gp-tree-size 60 tree functions terminals)
+        ;; 20141104 decided to try smaller trees, change 60 to 30
+        ;; tree (tree/limit-gp-tree-size 60 tree functions terminals)
+        tree (tree/limit-gp-tree-size 30 tree functions terminals)
         
         tree (tree/jiggle-gp-tree tree)
         o (make-individual tree)

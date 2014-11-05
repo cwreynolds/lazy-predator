@@ -51,8 +51,8 @@
 (defn sin-sin-fitness
   ([program] (sin-sin-fitness program 100))
   ([program samples] (let [;; just for test, place samples regularly, not random
-                           ;;xs (repeatedly samples #(generators/float))
-                           xs (map #(/ % (float samples)) (range (inc samples)))
+                           xs (repeatedly samples #(generators/float))
+                           ;;xs (map #(/ % (float samples)) (range (inc samples)))
 
                            correct (map sin-sin-example xs)
                            evolved (map (fn [a]
@@ -136,5 +136,7 @@
                                        sin-sin-fitness
                                        functions
                                        terminals))))))
+
+'(strawman-sin-sin-run 80000 200 10)
 
 'lazy-predator.core
