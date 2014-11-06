@@ -82,17 +82,23 @@
                            ;;                   (map fit/absolute-difference
                            ;;                        correct
                            ;;                        evolved)))
-                           
-                           fitness (- (square (apply +
-                                                     (map fit/absolute-difference
-                                                          correct
-                                                          evolved))))
+
+                           ;; fitness (- (square (apply +
+                           ;;                           (map fit/absolute-difference
+                           ;;                                correct
+                           ;;                                evolved))))
+
+                           ;; 20141105 try using max again
+                           fitness (- (apply max
+                                             (map fit/absolute-difference
+                                                  correct
+                                                  evolved)))
 
                            ]
                        fitness)))
 
 (defn test-sin-sin-fitness
-  ""
+  "I think this was just to verify that it got zero error hence 0 fitness"
   []
   (let [body-of-sin-sin-example '(Math/sin (* (/ x 0.03)
                                               (+ (* (Math/sin (/ x 0.05))
@@ -137,6 +143,6 @@
                                        functions
                                        terminals))))))
 
-'(strawman-sin-sin-run 80000 200 10)
+'(strawman-sin-sin-run 150000 200 10)
 
 'lazy-predator.core
