@@ -632,4 +632,12 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
+(defn find-in-gp-tree
+  "true if given symbol is found in tree"
+  [symbol tree]
+  (some #(= symbol %)
+        (flatten tree)))
+
+;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
 'lazy-predator.tree

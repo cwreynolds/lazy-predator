@@ -48,54 +48,97 @@
 
 (defn- square [x] (* x x))
 
+;; (defn sin-sin-fitness
+;;   ([program] (sin-sin-fitness program 100))
+;;   ([program samples] (let [;; just for test, place samples regularly, not random
+;;                            xs (repeatedly samples #(generators/float))
+;;                            ;;xs (map #(/ % (float samples)) (range (inc samples)))
+
+;;                            correct (map sin-sin-example xs)
+;;                            evolved (map (fn [a]
+;;                                           (binding [x a]
+;;                                             (eval program)))
+;;                                         xs)
+                           
+;;                            ;; sum-diff-sq (apply +
+;;                            ;;                    (map fit/difference-squared
+;;                            ;;                         correct
+;;                            ;;                         evolved))
+;;                            ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
+;;                            ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
+;;                            ;;           Double/NEGATIVE_INFINITY
+;;                            ;;           ave-diff-sq-per-sample)
+                           
+;;                            ;; sum-diff-sq (apply +
+;;                            ;;                    (map fit/absolute-difference
+;;                            ;;                         correct
+;;                            ;;                         evolved))
+;;                            ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
+;;                            ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
+;;                            ;;           Double/NEGATIVE_INFINITY
+;;                            ;;           ave-diff-sq-per-sample)
+
+;;                            ;; fitness (- (apply max
+;;                            ;;                   (map fit/absolute-difference
+;;                            ;;                        correct
+;;                            ;;                        evolved)))
+
+;;                            ;; fitness (- (square (apply +
+;;                            ;;                           (map fit/absolute-difference
+;;                            ;;                                correct
+;;                            ;;                                evolved))))
+
+;;                            ;; ;; 20141105 try using max again
+;;                            ;; fitness (- (apply max
+;;                            ;;                   (map fit/absolute-difference
+;;                            ;;                        correct
+;;                            ;;                        evolved)))
+
+;;                            ;; 20141106 yeah...no, back to sum, but no square
+;;                            fitness (- (apply +
+;;                                              (map fit/absolute-difference
+;;                                                   correct
+;;                                                   evolved)))
+
+;;                            ]
+
+;;                        ;; 20141106
+;;                        ;; fitness
+;;                        (if (tree/find-in-gp-tree 'x program)
+;;                          fitness
+;;                          Double/NEGATIVE_INFINITY)
+;;                        )))
+
+;; 20141107
+
 (defn sin-sin-fitness
-  ([program] (sin-sin-fitness program 100))
-  ([program samples] (let [;; just for test, place samples regularly, not random
-                           xs (repeatedly samples #(generators/float))
-                           ;;xs (map #(/ % (float samples)) (range (inc samples)))
+  "evaluate the fitness of one individuals tree, given a set of random x samples"
+  [tree samples]
+  (let [correct (map sin-sin-example samples)
+        evolved (map (fn [a]
+                       (binding [x a]
+                         (eval tree)))
+                    samples)
+        fitness (- (apply +
+                          (map fit/absolute-difference
+                               correct
+                               evolved)))]
+    (if (tree/find-in-gp-tree 'x tree)
+      fitness
+      Double/NEGATIVE_INFINITY)))
 
-                           correct (map sin-sin-example xs)
-                           evolved (map (fn [a]
-                                          (binding [x a]
-                                            (eval program)))
-                                        xs)
-                           
-                           ;; sum-diff-sq (apply +
-                           ;;                    (map fit/difference-squared
-                           ;;                         correct
-                           ;;                         evolved))
-                           ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
-                           ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
-                           ;;           Double/NEGATIVE_INFINITY
-                           ;;           ave-diff-sq-per-sample)
-                           
-                           ;; sum-diff-sq (apply +
-                           ;;                    (map fit/absolute-difference
-                           ;;                         correct
-                           ;;                         evolved))
-                           ;; ave-diff-sq-per-sample (- (/ sum-diff-sq samples))
-                           ;; fitness (if (Double/isNaN ave-diff-sq-per-sample)
-                           ;;           Double/NEGATIVE_INFINITY
-                           ;;           ave-diff-sq-per-sample)
+;; 20141107 trying new approach: the three individuals in each next-gp-individual
+;; cycle form a "cohort" and are each tested in the same "scenario". in the case of
+;; the sin-sin problem, this corresponds to the same set of 100 random x values.
 
-                           ;; fitness (- (apply max
-                           ;;                   (map fit/absolute-difference
-                           ;;                        correct
-                           ;;                        evolved)))
-
-                           ;; fitness (- (square (apply +
-                           ;;                           (map fit/absolute-difference
-                           ;;                                correct
-                           ;;                                evolved))))
-
-                           ;; 20141105 try using max again
-                           fitness (- (apply max
-                                             (map fit/absolute-difference
-                                                  correct
-                                                  evolved)))
-
-                           ]
-                       fitness)))
+(defn sin-sin-cohort-fitness
+  "given an ordered collection of GP trees, determine their fitnesses at the
+   same 100 samples randomly distributed along the interval from 0.0 to 1.0,
+   returning an ordered collection of fitnesses"
+  [trees]
+  (let [xs (repeatedly 100 #(generators/float))]
+    (map #(sin-sin-fitness % xs)
+         trees)))
 
 (defn test-sin-sin-fitness
   "I think this was just to verify that it got zero error hence 0 fitness"
@@ -123,23 +166,19 @@
                                            functions
                                            terminals
                                            10)]
-      ;; (prn (list individuals
-      ;;            (pop/average-fitness population)))
-
-
       (when (= 0 (mod individuals 20))
         (newline)
-        ;; (prn (list 'demes (map count population)))
         (prn individuals)
         (doseq [x (pop/population-snapshot population)] 
           (pp/pprint x)))
-
-
-      
       (when (< individuals n)
         (recur (inc individuals)
                (pop/next-gp-individual population
-                                       sin-sin-fitness
+                                       
+                                       ;; 20141107
+                                       ;; sin-sin-fitness
+                                       sin-sin-cohort-fitness
+                                       
                                        functions
                                        terminals))))))
 

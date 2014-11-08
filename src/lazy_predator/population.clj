@@ -186,6 +186,57 @@
 
 ;; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
+;; (defn next-gp-individual
+;;   "creates new population with one new individual"
+;;   [population fitness functions terminals]
+;;   (let [shuffled-demes (shuffle (maybe-migrate population))
+;;         deme (first shuffled-demes)
+;;         other-demes (vec (rest shuffled-demes))
+;;         _ (assert (> (count deme) 3))   ; ???
+;;         shuffled-individuals (shuffle deme)
+;;         [a b c] shuffled-individuals
+;;         other-individuals (vec (drop 3 shuffled-individuals))
+
+;;         af (assoc a :fitness (fitness (:tree a)))
+;;         bf (assoc b :fitness (fitness (:tree b)) )
+;;         cf (assoc c :fitness (fitness (:tree c)) )
+
+;;         sorted-by-fitness (reverse (sort-by :fitness (list af bf cf)))
+;;         [p q] sorted-by-fitness
+
+;;         tree (tree/gp-crossover (:tree p)
+;;                                 (:tree q)
+;;                                 functions
+;;                                 terminals)
+        
+;;         ;; parameters for mutations should be passed in as args
+;;         ;; 20141030 hoist likelihood: 0.05 -> 0.2
+;;         ;; 0.2 -> 0.4 which seems ridiculously high
+;;         ;; back to 0.2
+;;         ;; set to conservative "occasional" value along with hard limit
+;;         tree (if (tree/maybe? 1/20)
+;;                (tree/hoist-gp-subtree tree functions terminals)
+;;                tree)
+
+;;         ;; parameters for mutations should be passed in as args
+;;         ;; 20141104 decided to try smaller trees, change 60 to 30
+;;         tree (tree/limit-gp-tree-size 60 tree functions terminals)
+;;         ;; tree (tree/limit-gp-tree-size 30 tree functions terminals)
+        
+;;         tree (tree/jiggle-gp-tree tree)
+;;         o (make-individual tree)
+;;         ]
+    
+;;     ;; conjoin two parents and new offspring to the end of the selected deme,
+;;     ;; conjoin that deme to the end of the other deems, return this new population
+;;     (conj other-demes
+;;           (conj (conj (conj other-individuals
+;;                             p)
+;;                       q)
+;;                 o))))
+
+
+;; 20141107
 
 (defn next-gp-individual
   "creates new population with one new individual"
@@ -198,10 +249,23 @@
         [a b c] shuffled-individuals
         other-individuals (vec (drop 3 shuffled-individuals))
 
-        af (assoc a :fitness (fitness (:tree a)))
-        bf (assoc b :fitness (fitness (:tree b)) )
-        cf (assoc c :fitness (fitness (:tree c)) )
+        ;; 20141107
+        ;; af (assoc a :fitness (fitness (:tree a)))
+        ;; bf (assoc b :fitness (fitness (:tree b)))
+        ;; cf (assoc c :fitness (fitness (:tree c)))
+        ;; 20141107
+        ;; Ah OK, here is the problem we've passed in a fitness
+        ;; function but we are using it to measure chohort fitness.
+        ;; Maybe this function take a cohort-fitness or a tree-fitness
+        ;; function, defaulting appropriately.
+        ;; [af bf cf] (fitness (map :tree [a b c]))
+        ;; this implementation seems awkward:
+        three-fitnesses (fitness (map :tree [a b c]))
+        af (assoc a :fitness (nth three-fitnesses 0))
+        bf (assoc b :fitness (nth three-fitnesses 1))
+        cf (assoc c :fitness (nth three-fitnesses 2))
 
+        
         sorted-by-fitness (reverse (sort-by :fitness (list af bf cf)))
         [p q] sorted-by-fitness
 
