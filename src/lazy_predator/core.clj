@@ -118,11 +118,20 @@
         evolved (map (fn [a]
                        (binding [x a]
                          (eval tree)))
-                    samples)
-        fitness (- (apply +
+                     samples)
+
+        ;; 20141109 -- back to average error (normalize by number of samples)
+        ;; fitness (- (apply +
+        ;;                   (map fit/absolute-difference
+        ;;                        correct
+        ;;                        evolved)))
+        fitness (- (/ (apply +
                           (map fit/absolute-difference
                                correct
-                               evolved)))]
+                               evolved))
+                      (count samples)))
+        
+        ]
     (if (tree/find-in-gp-tree 'x tree)
       fitness
       Double/NEGATIVE_INFINITY)))
@@ -136,7 +145,9 @@
    same 100 samples randomly distributed along the interval from 0.0 to 1.0,
    returning an ordered collection of fitnesses"
   [trees]
-  (let [xs (repeatedly 100 #(generators/float))]
+;;(let [xs (repeatedly 100 #(generators/float))]
+;;(let [xs (repeatedly 10 #(generators/float))]
+  (let [xs (vec (repeatedly 20 #(generators/float)))]
     (map #(sin-sin-fitness % xs)
          trees)))
 
@@ -182,6 +193,6 @@
                                        functions
                                        terminals))))))
 
-'(strawman-sin-sin-run 150000 200 10)
+'(strawman-sin-sin-run 150000 400 10)
 
 'lazy-predator.core
